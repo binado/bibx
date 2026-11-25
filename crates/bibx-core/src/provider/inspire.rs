@@ -110,11 +110,7 @@ impl Provider for Inspire {
             match hits {
                 0 => return Err(Error::NotFound(id.clone())),
                 1 => {}
-                _ => {
-                    return Err(Error::Provider(format!(
-                        "`{id}` matches several INSPIRE records; use a record id or an eprint"
-                    )));
-                }
+                _ => return Err(Error::AmbiguousInspire(id.clone())),
             }
         }
         single_entry(&body)

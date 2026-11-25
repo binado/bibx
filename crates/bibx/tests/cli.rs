@@ -91,6 +91,24 @@ fn duplicate_key_exits_3_and_leaves_the_file_alone() {
 }
 
 #[test]
+fn ambiguous_inspire_search_exits_4_and_leaves_the_file_alone() {
+    let server = MockServer::start(vec![(
+        "/api/literature?q=texkey%3Atest%3Akey&size=2&format=bibtex".into(),
+        Reply::bibtex("@article{first}\n@article{second}\n"),
+    )]);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@book{existing}\n").unwrap();
+    bibx(&server, dir.path())
+        .args(["add", "inspire:test:key"])
+        .assert()
+        .code(4)
+        .stdout("")
+        .stderr(predicates::str::contains("use a record id or an eprint"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), "@book{existing}\n");
+}
+
+#[test]
 fn unknown_record_exits_1() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
     fs::write(dir.path().join("refs.bib"), "").unwrap();
