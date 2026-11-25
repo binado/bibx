@@ -5,12 +5,12 @@ pub fn parse(src: &str) -> Bib<'_> {
     let mut items = Vec::new();
     let mut cursor = Cursor::new(src);
     while cursor.pos < src.len() {
-        let at = cursor.find_byte(b'@').unwrap_or(src.len());
-        if at > cursor.pos {
-            items.push(Item::Comment(Span::new(cursor.pos, at)));
-            cursor.pos = at;
+        let start = cursor.pos;
+        cursor.skip_to_item();
+        if cursor.pos > start {
+            items.push(Item::Comment(Span::new(start, cursor.pos)));
         }
-        if at >= src.len() {
+        if cursor.pos == src.len() {
             break;
         }
         let start = cursor.pos;
@@ -71,13 +71,25 @@ impl<'s> Cursor<'s> {
         self.src.get(start..end).unwrap_or("")
     }
 
+    fn skip_to_item(&mut self) {
+        while let Some(b) = self.peek() {
+            match b {
+                b'@' => break,
+                b'%' => self.skip_line_comment(),
+                _ => self.pos += 1,
+            }
+        }
+    }
+
+    fn skip_line_comment(&mut self) {
+        self.pos = self.find_byte(b'\n').unwrap_or(self.bytes.len());
+    }
+
     /// Skip whitespace and `%` comments (to the end of the line).
     fn skip_ws(&mut self) {
         while let Some(b) = self.peek() {
             if b == b'%' {
-                while self.peek().is_some_and(|b| b != b'\n') {
-                    self.pos += 1;
-                }
+                self.skip_line_comment();
             } else if b.is_ascii_whitespace() {
                 self.pos += 1;
             } else {
