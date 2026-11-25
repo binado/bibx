@@ -1,0 +1,27 @@
+[package]
+name = "bibx"
+description = "Manage a BibTeX file from the command line: add, remove and list entries"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "bibx"
+path = "src/main.rs"
+
+[dependencies]
+bibx-core.workspace = true
+clap.workspace = true
+comfy-table.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+assert_cmd = "2"
+datatest-stable = "0.3.3"
+bibx-mdtest = { path = "../mdtest" }
+
+[[test]]
+name = "mdtest"
+harness = false

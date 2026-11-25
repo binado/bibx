@@ -1,0 +1,21 @@
+[package]
+name = "bibx-core"
+description = "Model, identifiers, providers and operations behind the bibx CLI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["inspire"]
+inspire = ["dep:ureq"]
+
+[dependencies]
+bibx-parser.workspace = true
+indexmap.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+ureq = { workspace = true, optional = true }
+
+[dev-dependencies]

@@ -1,0 +1,15 @@
+[workspace]
+# Only tag and publish when the Release PR is merged, not on every push to main.
+release_always = false
+# No crates.io baseline yet; cargo-semver-checks has nothing to compare against.
+semver_check = false
+
+[[package]]
+name = "bibx"
+# The libraries are what bibx ships; their commits belong in the CLI changelog.
+changelog_include = ["bibx-core", "bibx-parser"]
+
+# Test-only harness; never versioned, tagged or published.
+[[package]]
+name = "bibx-mdtest"
+release = false
