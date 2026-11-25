@@ -12,6 +12,7 @@ name = "bibx"
 path = "src/main.rs"
 
 [dependencies]
+anyhow.workspace = true
 bibx-core.workspace = true
 clap.workspace = true
 comfy-table.workspace = true
