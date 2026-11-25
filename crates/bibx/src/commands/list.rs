@@ -1,5 +1,6 @@
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 
+use anyhow::Context;
 use bibx_core::ops::list::{Row, SortKey, list};
 use clap::{Args, ValueEnum};
 use comfy_table::{ContentArrangement, Table, presets};
@@ -45,10 +46,28 @@ pub fn run(args: ListArgs, files: &[std::path::PathBuf]) -> anyhow::Result<()> {
         Format::Table => table(&rows, &args.fields),
         Format::Json => json_output(&rows),
     };
-    let mut stdout = std::io::stdout().lock();
-    // A closed pipe (`bibx list | head`) is not an error.
-    let _ = stdout.write_all(out.as_bytes());
-    Ok(())
+    let mut stdout = stdout_writer().context("opening stdout for list output")?;
+    match stdout
+        .write_all(out.as_bytes())
+        .and_then(|()| stdout.flush())
+    {
+        Err(err) if err.kind() == ErrorKind::BrokenPipe => Ok(()),
+        result => result.context("writing list output to stdout"),
+    }
+}
+
+#[cfg(unix)]
+fn stdout_writer() -> std::io::Result<impl Write> {
+    use std::os::fd::AsFd;
+
+    // Stdout treats EBADF as success. Writing through a duplicate reports that error.
+    let fd = std::io::stdout().as_fd().try_clone_to_owned()?;
+    Ok(std::fs::File::from(fd))
+}
+
+#[cfg(not(unix))]
+fn stdout_writer() -> std::io::Result<impl Write> {
+    Ok(std::io::stdout().lock())
 }
 
 fn cell(row: &Row, name: &str) -> String {
