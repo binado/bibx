@@ -1,3 +1,4 @@
+pub mod add;
 pub mod list;
 
 use std::path::PathBuf;
@@ -29,4 +30,13 @@ pub fn single_target(files: &[PathBuf]) -> anyhow::Result<Target> {
 
 pub fn load(target: &Target) -> anyhow::Result<BibFile> {
     Ok(BibFile::load(&target.path)?)
+}
+
+/// ` <prefix> <file>` when the file was auto-discovered, so a wrong guess is visible.
+pub fn named(target: &Target, prefix: &str) -> String {
+    if target.auto_discovered {
+        format!("{prefix} {}", target.path.display())
+    } else {
+        String::new()
+    }
 }

@@ -25,6 +25,8 @@ pub enum Error {
     Ambiguous { id: Identifier, keys: Vec<String> },
     #[error("an entry with key `{0}` already exists; pass --key to choose another key")]
     DuplicateKey(String),
+    #[error("invalid citation key `{0}`")]
+    InvalidKey(String),
     #[error("network error: {0}")]
     Network(String),
     #[error("{0}")]

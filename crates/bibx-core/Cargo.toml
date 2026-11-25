@@ -10,6 +10,8 @@ repository.workspace = true
 [features]
 default = ["inspire"]
 inspire = ["dep:ureq"]
+# An in-process HTTP server for tests of crates that use providers.
+testing = []
 
 [dependencies]
 bibx-parser.workspace = true
@@ -19,3 +21,7 @@ thiserror.workspace = true
 ureq = { workspace = true, optional = true }
 
 [dev-dependencies]
+
+[[test]]
+name = "inspire"
+required-features = ["inspire", "testing"]

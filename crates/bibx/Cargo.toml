@@ -19,7 +19,10 @@ comfy-table.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+bibx-core = { workspace = true, features = ["testing"] }
+tempfile.workspace = true
 assert_cmd = "2"
+predicates = "3"
 datatest-stable = "0.3.3"
 bibx-mdtest = { path = "../mdtest" }
 

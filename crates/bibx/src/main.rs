@@ -10,6 +10,7 @@ use cli::{Cli, Command};
 
 fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
+        Command::Add(args) => commands::add::run(args, &cli.file),
         Command::List(args) => commands::list::run(args, &cli.file),
     }
 }

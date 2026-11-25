@@ -9,6 +9,7 @@ pub mod discover;
 pub mod error;
 pub mod identifier;
 pub mod ops;
+pub mod provider;
 pub mod write;
 
 pub use bibfile::{BibFile, LineEnding};

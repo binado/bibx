@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+use crate::commands::add::AddArgs;
 use crate::commands::list::ListArgs;
 
-/// Manage a BibTeX file: list its entries (and, soon, add and remove them).
+/// Manage a BibTeX file: add, remove and list its entries.
 ///
 /// The bib file is chosen from `-f/--file`, then the `BIBX_FILE` environment variable, then
 /// the only `*.bib` file in the current directory. The file is edited in place with small
@@ -25,6 +26,8 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Fetch an entry from a provider and append it to the bib file.
+    Add(AddArgs),
     /// List the entries of the bib file.
     List(ListArgs),
 }
