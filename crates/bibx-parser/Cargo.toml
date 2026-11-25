@@ -1,0 +1,12 @@
+[package]
+name = "bibx-parser"
+description = "Lossless BibTeX parser that records byte spans, for in-place edits"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dev-dependencies]
+biblatex = "0.11"
+proptest = "1"

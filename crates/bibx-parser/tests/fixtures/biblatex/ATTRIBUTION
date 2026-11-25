@@ -1,0 +1,3 @@
+These `.bib` files are copied from the test suite of the `biblatex` crate (v0.11.0,
+https://github.com/typst/biblatex), which is dual-licensed MIT OR Apache-2.0. The license
+texts are alongside. They are used only as parser test input.
