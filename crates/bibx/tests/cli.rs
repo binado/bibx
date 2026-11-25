@@ -114,3 +114,36 @@ fn crlf_file_gets_a_crlf_entry() {
     assert!(out.starts_with("@book{a}\r\n\r\n@article{Maldacena:1997re,\r\n"));
     assert!(!out.replace("\r\n", "").contains('\n'));
 }
+
+fn remove_cmd(dir: &std::path::Path) -> Command {
+    let mut cmd = Command::cargo_bin("bibx").unwrap();
+    cmd.current_dir(dir).env_clear();
+    cmd
+}
+
+#[test]
+fn remove_rewrites_only_the_entry_and_keeps_crlf() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@a{a}\r\n\r\n@b{b,\r\n  x = 1\r\n}\r\n\r\n@c{c}\r\n").unwrap();
+    remove_cmd(dir.path())
+        .args(["remove", "b"])
+        .assert()
+        .success()
+        .stdout("@b{b,\r\n  x = 1\r\n}\n")
+        .stderr("removed b from refs.bib\n");
+    assert_eq!(fs::read_to_string(&path).unwrap(), "@a{a}\r\n\r\n@c{c}\r\n");
+}
+
+#[test]
+fn remove_dry_run_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@a{a}\n").unwrap();
+    remove_cmd(dir.path())
+        .args(["remove", "a", "--dry-run"])
+        .assert()
+        .success()
+        .stdout("@a{a}\n");
+    assert_eq!(fs::read_to_string(&path).unwrap(), "@a{a}\n");
+}

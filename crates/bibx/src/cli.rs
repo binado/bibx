@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 
 use crate::commands::add::AddArgs;
 use crate::commands::list::ListArgs;
+use crate::commands::remove::RemoveArgs;
 
 /// Manage a BibTeX file: add, remove and list its entries.
 ///
@@ -28,6 +29,8 @@ pub struct Cli {
 pub enum Command {
     /// Fetch an entry from a provider and append it to the bib file.
     Add(AddArgs),
+    /// Delete one entry from the bib file.
+    Remove(RemoveArgs),
     /// List the entries of the bib file.
     List(ListArgs),
 }
