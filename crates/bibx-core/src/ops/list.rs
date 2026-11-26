@@ -82,21 +82,53 @@ pub struct Row {
     pub fields: IndexMap<String, Value>,
 }
 
-/// What to sort by. `key` and `type` are the pseudo-fields; any other name is a bib field,
-/// ordered by its [decoded](Value::decoded) value.
+/// What `list` shows or sorts by. `key` and `type` are the pseudo-fields; any other name is
+/// a bib field.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SortKey {
+pub enum Column {
     Key,
     Type,
-    Field(String),
+    Field(FieldName),
 }
 
-impl SortKey {
-    pub fn parse(name: &str) -> SortKey {
+/// A bib field name, lowercased and never `key` or `type`. Only [`Column::parse`] makes one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldName(String);
+
+impl FieldName {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Column {
+    /// The column called `name`, compared case-insensitively.
+    pub fn parse(name: &str) -> Column {
         match name.to_ascii_lowercase().as_str() {
-            "key" => SortKey::Key,
-            "type" => SortKey::Type,
-            other => SortKey::Field(other.to_string()),
+            "key" => Column::Key,
+            "type" => Column::Type,
+            other => Column::Field(FieldName(other.to_string())),
+        }
+    }
+
+    /// The lowercased name.
+    pub fn name(&self) -> &str {
+        match self {
+            Column::Key => "key",
+            Column::Type => "type",
+            Column::Field(name) => name.as_str(),
+        }
+    }
+}
+
+impl Row {
+    /// The text shown in `column`: the key, the type or a [decoded](Value::decoded) field.
+    /// `None` for a field the row does not carry.
+    pub fn cell(&self, column: &Column) -> Option<Cow<'_, str>> {
+        match column {
+            Column::Key => Some(Cow::Borrowed(&self.key)),
+            Column::Type => Some(Cow::Borrowed(&self.entry_type)),
+            Column::Field(name) => self.fields.get(name.as_str()).map(Value::decoded),
         }
     }
 }
@@ -125,29 +157,28 @@ fn collapse_ws(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// The entries of `bib` as rows carrying `fields` (names other than the pseudo-fields `key`
-/// and `type`, which every row has anyway). The sort is stable.
-pub fn list(src: &str, bib: &Bib, sort: Option<&SortKey>, fields: &[String]) -> Vec<Row> {
+/// The entries of `bib` as rows carrying the bib fields among `columns` (every row has its
+/// key and type anyway). A field sorts by its [decoded](Value::decoded) value. The sort is
+/// stable.
+pub fn list(src: &str, bib: &Bib, sort: Option<&Column>, columns: &[Column]) -> Vec<Row> {
     let mut rows: Vec<(Sortable, Row)> = bib
         .entries()
         .map(|entry| {
             let value = |name: &str| entry.field(name).map(|f| Value::new(src, f));
             let mut row_fields = IndexMap::new();
-            for name in fields {
-                let name = name.to_ascii_lowercase();
-                if matches!(name.as_str(), "key" | "type") {
-                    continue;
-                }
-                if let Some(v) = value(&name) {
-                    row_fields.insert(name, v);
+            for column in columns {
+                if let Column::Field(name) = column
+                    && let Some(v) = value(name.as_str())
+                {
+                    row_fields.insert(name.as_str().to_string(), v);
                 }
             }
             let sortable = match sort {
                 None => Sortable::Missing,
-                Some(SortKey::Key) => Sortable::from_text(Some(entry.key.value.to_string())),
-                Some(SortKey::Type) => Sortable::from_text(Some(entry.kind.value.to_string())),
-                Some(SortKey::Field(name)) => {
-                    Sortable::from_text(value(name).map(|v| v.decoded().into_owned()))
+                Some(Column::Key) => Sortable::from_text(Some(entry.key.value.to_string())),
+                Some(Column::Type) => Sortable::from_text(Some(entry.kind.value.to_string())),
+                Some(Column::Field(name)) => {
+                    Sortable::from_text(value(name.as_str()).map(|v| v.decoded().into_owned()))
                 }
             };
             (
@@ -174,7 +205,7 @@ mod tests {
 
     fn keys(sort: Option<&str>) -> Vec<String> {
         let bib = bibx_parser::parse(SRC);
-        let key = sort.map(SortKey::parse);
+        let key = sort.map(Column::parse);
         list(SRC, &bib, key.as_ref(), &[])
             .into_iter()
             .map(|r| r.key)
@@ -201,24 +232,22 @@ mod tests {
     #[test]
     fn rows_carry_requested_fields_only_when_present() {
         let bib = bibx_parser::parse(SRC);
-        let rows = list(
-            SRC,
-            &bib,
-            None,
-            &["Title".into(), "year".into(), "key".into()],
-        );
+        let columns = ["Title", "year", "key"].map(Column::parse);
+        let rows = list(SRC, &bib, None, &columns);
         assert_eq!(rows[0].fields["title"].raw(), "Beta two");
         assert_eq!(rows[0].fields["year"].raw(), "2001");
         assert_eq!(rows[1].fields.len(), 1);
         assert_eq!(rows[0].entry_type, "article");
         assert!(!rows[0].fields.contains_key("key"));
+        let cells = columns.each_ref().map(|c| rows[1].cell(c));
+        assert_eq!(cells, [None, Some("1999".into()), Some("a".into())]);
     }
 
     /// The only field of a one-entry bibliography.
     fn field(name: &str, source: &str) -> Value {
         let src = format!("@misc{{k, {name} = {source}}}");
         let bib = bibx_parser::parse(&src);
-        let mut rows = list(&src, &bib, None, &[name.into()]);
+        let mut rows = list(&src, &bib, None, &[Column::parse(name)]);
         rows.remove(0).fields.pop().expect("one field").1
     }
 
@@ -270,7 +299,7 @@ mod tests {
 
     fn keys_sorted_by(src: &str, name: &str) -> Vec<String> {
         let bib = bibx_parser::parse(src);
-        list(src, &bib, Some(&SortKey::parse(name)), &[])
+        list(src, &bib, Some(&Column::parse(name)), &[])
             .into_iter()
             .map(|r| r.key)
             .collect()

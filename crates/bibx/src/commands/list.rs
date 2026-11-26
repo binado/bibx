@@ -1,7 +1,7 @@
 use std::io::{ErrorKind, Write};
 
 use anyhow::Context;
-use bibx_core::ops::list::{Row, SortKey, list};
+use bibx_core::ops::list::{Column, Row, list};
 use clap::{Args, ValueEnum};
 use comfy_table::{ContentArrangement, Table, presets};
 use serde_json::{Map, Value, json};
@@ -47,10 +47,11 @@ pub fn run(args: ListArgs) -> anyhow::Result<()> {
     let target = args.file.target()?;
     let file = load(&target)?;
     let bib = file.parse();
-    let sort = args.sort.as_deref().map(SortKey::parse);
-    let rows = list(&file.src, &bib, sort.as_ref(), &args.fields);
+    let sort = args.sort.as_deref().map(Column::parse);
+    let columns: Vec<Column> = args.fields.iter().map(|f| Column::parse(f)).collect();
+    let rows = list(&file.src, &bib, sort.as_ref(), &columns);
     let out = match args.format {
-        Format::Table => table(&rows, &args.fields),
+        Format::Table => table(&rows, &columns),
         Format::Json => json_output(&rows),
     };
     let mut stdout = stdout_writer().context("opening stdout for list output")?;
@@ -77,19 +78,7 @@ fn stdout_writer() -> std::io::Result<impl Write> {
     Ok(std::io::stdout().lock())
 }
 
-fn cell(row: &Row, name: &str) -> String {
-    match name.to_ascii_lowercase().as_str() {
-        "key" => row.key.clone(),
-        "type" => row.entry_type.clone(),
-        name => row
-            .fields
-            .get(name)
-            .map(|v| v.decoded().into_owned())
-            .unwrap_or_default(),
-    }
-}
-
-fn table(rows: &[Row], fields: &[String]) -> String {
+fn table(rows: &[Row], columns: &[Column]) -> String {
     if rows.is_empty() {
         return String::new();
     }
@@ -97,12 +86,12 @@ fn table(rows: &[Row], fields: &[String]) -> String {
     table
         .load_preset(presets::UTF8_FULL_CONDENSED)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(fields.iter().map(|f| f.to_ascii_lowercase()));
+        .set_header(columns.iter().map(Column::name));
     if !table.is_tty() {
         table.set_width(80);
     }
     for row in rows {
-        table.add_row(fields.iter().map(|f| cell(row, f)));
+        table.add_row(columns.iter().map(|c| row.cell(c).unwrap_or_default()));
     }
     format!("{table}\n")
 }
