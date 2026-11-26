@@ -21,7 +21,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 fn exit_code(err: &anyhow::Error) -> u8 {
     match err.downcast_ref::<Error>() {
         Some(Error::DuplicateKey(_)) => 3,
-        Some(Error::Ambiguous { .. }) => 4,
+        Some(Error::Ambiguous { .. } | Error::AmbiguousInspire(_)) => 4,
         _ => 1,
     }
 }

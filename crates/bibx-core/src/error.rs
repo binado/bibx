@@ -23,6 +23,8 @@ pub enum Error {
     NotFound(Identifier),
     #[error("`{id}` matches several entries: {}", .keys.join(", "))]
     Ambiguous { id: Identifier, keys: Vec<String> },
+    #[error("`{0}` matches several INSPIRE records; use a record id or an eprint")]
+    AmbiguousInspire(Identifier),
     #[error("an entry with key `{0}` already exists; pass --key to choose another key")]
     DuplicateKey(String),
     #[error("invalid citation key `{0}`")]

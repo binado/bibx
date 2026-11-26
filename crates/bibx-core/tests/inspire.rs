@@ -59,10 +59,13 @@ fn texkey_is_a_search_with_exactly_one_hit() {
 }
 
 #[test]
-fn search_with_two_hits_is_an_error() {
+fn search_with_two_hits_is_ambiguous() {
     let server = MockServer::start(vec![(TEXKEY_SEARCH.into(), Reply::bibtex(SEARCH_TWO))]);
-    let err = fetch(&server, "inspire:Maldacena:1997re").unwrap_err();
-    assert!(matches!(err, Error::Provider(m) if m.contains("several")),);
+    let id = "inspire:Maldacena:1997re";
+    assert!(matches!(
+        fetch(&server, id),
+        Err(Error::AmbiguousInspire(query)) if query == Identifier::parse(id)
+    ));
 }
 
 #[test]
