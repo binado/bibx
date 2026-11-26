@@ -28,17 +28,8 @@ pub fn remove(file: &BibFile, id: &Identifier) -> Result<RemovePlan> {
     };
     let src = file.src.as_str();
     let (start, end) = removal_range(src, entry.span.start, entry.span.end);
-    let (head, tail) = (src.get(..start), src.get(end..));
-    let new_src = match (head, tail) {
-        (Some(head), Some(tail)) => format!("{head}{tail}"),
-        _ => {
-            return Err(Error::Parse {
-                message: "entry range is out of bounds".into(),
-            });
-        }
-    };
     Ok(RemovePlan {
-        new_src,
+        new_src: format!("{}{}", &src[..start], &src[end..]),
         removed_text: entry.span.text(src).to_string(),
         key: entry.key.value.to_string(),
     })

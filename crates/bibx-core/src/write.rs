@@ -42,7 +42,8 @@ mod tests {
         std::os::unix::fs::symlink("refs.bib", &link).unwrap();
 
         let error = atomic_write(&link, b"new").unwrap_err();
-        assert!(error.to_string().contains("symbolic link"));
+        let cause = std::error::Error::source(&error).unwrap();
+        assert!(cause.to_string().contains("symbolic link"));
         assert_eq!(std::fs::read_link(&link).unwrap(), Path::new("refs.bib"));
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "old");
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);

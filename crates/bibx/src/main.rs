@@ -31,7 +31,7 @@ fn main() -> ExitCode {
     match run(cli) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
-            eprintln!("error: {err}");
+            eprintln!("error: {err:#}");
             ExitCode::from(exit_code(&err))
         }
     }
