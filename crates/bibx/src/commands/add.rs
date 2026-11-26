@@ -19,7 +19,7 @@ impl From<SourceArg> for Source {
     }
 }
 
-/// Fetch an entry from a provider and append it to the bib file.
+/// Fetch an entry from a provider, append it to the bib file, and print it to stdout.
 #[derive(Debug, Args)]
 pub struct AddArgs {
     /// What to fetch, e.g. `eprint:2005.12345`.
@@ -54,10 +54,10 @@ pub fn run(args: AddArgs) -> anyhow::Result<()> {
     let fetched = provider_for(args.source.into()).fetch(&id)?;
     let plan = add(&file, &fetched, args.key.as_deref())?;
     if args.dry_run {
-        print!("{}", plan.entry);
-        return Ok(());
+        eprintln!("[dry run] Skipping write to {}", file.path.display());
+    } else {
+        atomic_write(&file.path, plan.new_src.as_bytes())?;
     }
-    atomic_write(&file.path, plan.new_src.as_bytes())?;
-    eprintln!("added {}{}", plan.key, super::named(&target, " to"));
+    print!("{}", plan.entry);
     Ok(())
 }

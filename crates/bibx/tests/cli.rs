@@ -21,29 +21,29 @@ fn bibx(server: &MockServer, dir: &std::path::Path) -> Command {
 }
 
 #[test]
-fn add_appends_the_entry_and_names_an_auto_discovered_file() {
+fn add_appends_and_prints_the_entry_with_an_auto_discovered_file() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
     let path = dir.path().join("refs.bib");
     fs::write(&path, "@book{a, title = {A}}\n").unwrap();
+    let entry = format!("{}\n", RECORD.trim_end());
     bibx(&server, dir.path())
         .args(["add", "eprint:hep-th/9711200"])
         .assert()
         .success()
-        .stdout("")
-        .stderr("added Maldacena:1997re to refs.bib\n");
+        .stdout(entry.clone())
+        .stderr("");
     assert_eq!(
         fs::read_to_string(&path).unwrap(),
-        format!(
-            "@book{{a, title = {{A}}}}\n\n{}",
-            RECORD.trim_end().to_string() + "\n"
-        )
+        format!("@book{{a, title = {{A}}}}\n\n{entry}")
     );
 }
 
 #[test]
-fn add_with_an_explicit_file_does_not_name_it() {
+fn add_with_an_explicit_file_appends_and_prints_the_overridden_key() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
-    fs::write(dir.path().join("refs.bib"), "").unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "").unwrap();
+    let entry = RECORD.trim_end().replacen("Maldacena:1997re", "mine", 1) + "\n";
     bibx(&server, dir.path())
         .args([
             "add",
@@ -55,9 +55,9 @@ fn add_with_an_explicit_file_does_not_name_it() {
         ])
         .assert()
         .success()
-        .stderr("added mine\n");
-    let out = fs::read_to_string(dir.path().join("refs.bib")).unwrap();
-    assert!(out.starts_with("@article{mine,\n"));
+        .stdout(entry.clone())
+        .stderr("");
+    assert_eq!(fs::read_to_string(&path).unwrap(), entry);
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn dry_run_prints_the_entry_and_writes_nothing() {
         .assert()
         .success()
         .stdout(RECORD.trim_end().to_string() + "\n")
-        .stderr("");
+        .stderr("[dry run] Skipping write to refs.bib\n");
     assert_eq!(fs::read_to_string(&path).unwrap(), "@book{a}\n");
 }
 

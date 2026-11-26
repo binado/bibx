@@ -11,10 +11,10 @@ cargo install --path crates/bibx
 ## Usage
 
 ```sh
-bibx add arxiv:hep-th/9711200           # fetch from INSPIRE and append to the .bib file
+bibx add arxiv:hep-th/9711200           # fetch from INSPIRE, append to the .bib file, and print the entry
 bibx add 'url:https://arxiv.org/pdf/hep-th/9711200v2.pdf'
 bibx add 'url:https://inspirehep.net/literature/451647'
-bibx add doi:10.1103/PhysRevLett.116.061102 --key ligo --dry-run
+bibx add doi:10.1103/PhysRevLett.116.061102 --key ligo --dry-run  # preview and report the skipped write on stderr
 bibx list --sort year                   # table; --format json for scripts
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
 ```
