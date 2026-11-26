@@ -6,4 +6,4 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 duplicate key, 4 ambiguous match.
 
 ## Adding a CLI test
 
-Prefer a Markdown fixture in `resources/mdtest/*.md` (run by `tests/mdtest.rs`; format in [`crates/mdtest/README.md`](../mdtest/README.md)). Write the console block, run `just bless`, review the diff. Tests that need the network mock server stay in `tests/cli.rs`.
+Prefer a Markdown fixture in `resources/mdtest/*.md` (run by `tests/mdtest.rs`; format in [`crates/mdtest/README.md`](../mdtest/README.md)). Write the console block, run `mise run bless`, review the diff. Tests that need the network mock server stay in `tests/cli.rs`.

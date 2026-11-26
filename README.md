@@ -32,6 +32,10 @@ The bib file is `-f/--file`, then `BIBX_FILE`, then the only `*.bib` in the curr
 - INSPIRE is the only provider so far; arXiv, ADS, `check`, `fmt` and v2 commands are in the roadmap in `IDEA.md`
 - Values are shown as raw LaTeX; nothing is decoded
 
+## Development
+
+With Rust and [mise](https://mise.jdx.dev/) installed, run `mise install` in each clone to install prek and register the Git pre-commit hook. Run `mise run ci` for the full local checks or `mise tasks ls` to list tasks.
+
 ## Acknowledgements
 
 The mdtest harness is copied from [knf](https://github.com/binado/knf); `biblatex` is the parser's reference in tests, and some of its test files are reused (see `crates/bibx-parser/tests/fixtures/biblatex/ATTRIBUTION`).
