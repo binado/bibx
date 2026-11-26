@@ -3,8 +3,9 @@ use clap::{Parser, Subcommand};
 use crate::commands::add::AddArgs;
 use crate::commands::list::ListArgs;
 use crate::commands::remove::RemoveArgs;
+use crate::commands::show::ShowArgs;
 
-/// Manage a BibTeX file: add, remove and list its entries.
+/// Manage a BibTeX file: add, remove, list and show its entries.
 ///
 /// The bib file is chosen from the subcommand's `-f/--file` option, then the `BIBX_FILE`
 /// environment variable, then the only `*.bib` file in the current directory. The file is
@@ -35,4 +36,6 @@ pub enum Command {
     Remove(RemoveArgs),
     /// List the entries of the bib file.
     List(ListArgs),
+    /// Print one entry as stored in the bib file.
+    Show(ShowArgs),
 }

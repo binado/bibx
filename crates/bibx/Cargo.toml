@@ -1,6 +1,6 @@
 [package]
 name = "bibx"
-description = "Manage a BibTeX file from the command line: add, remove and list entries"
+description = "Manage a BibTeX file from the command line: add, remove, list and show entries"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -1,5 +1,5 @@
 use crate::bibfile::BibFile;
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::identifier::Identifier;
 
 /// The result of `remove`: the whole new file text and what was taken out.
@@ -15,17 +15,7 @@ pub struct RemovePlan {
 /// plus one blank line so no double blank line is left behind.
 pub fn remove(file: &BibFile, id: &Identifier) -> Result<RemovePlan> {
     let bib = file.parse();
-    let matches = file.find(&bib, id);
-    let entry = match matches.as_slice() {
-        [] => return Err(Error::NotFound(id.clone())),
-        [entry] => entry,
-        many => {
-            return Err(Error::Ambiguous {
-                id: id.clone(),
-                keys: many.iter().map(|e| e.key.value.to_string()).collect(),
-            });
-        }
-    };
+    let entry = file.find_one(&bib, id)?;
     let src = file.src.as_str();
     let (start, end) = removal_range(src, entry.span.start, entry.span.end);
     Ok(RemovePlan {
@@ -77,6 +67,7 @@ fn removal_range(src: &str, start: usize, end: usize) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Error;
 
     fn rm(src: &str, id: &str) -> Result<RemovePlan> {
         remove(

@@ -74,6 +74,25 @@ impl BibFile {
             })
             .collect()
     }
+
+    /// Find a single entry, reporting a missing or ambiguous match.
+    pub(crate) fn find_one<'b, 's>(
+        &self,
+        bib: &'b Bib<'s>,
+        id: &Identifier,
+    ) -> Result<&'b Entry<'s>> {
+        match self.find(bib, id).as_slice() {
+            [] => Err(Error::NotFound(id.clone())),
+            [entry] => Ok(entry),
+            many => Err(Error::Ambiguous {
+                id: id.clone(),
+                keys: many
+                    .iter()
+                    .map(|entry| entry.key.value.to_string())
+                    .collect(),
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
