@@ -1,6 +1,6 @@
 # bibx
 
-A CLI for inspecting BibTeX entries and editing a BibTeX file in place with small diffs.
+A CLI for inspecting BibTeX entries, checking bibliographies, and editing a BibTeX file in place with small diffs.
 
 ## Installation
 
@@ -18,9 +18,12 @@ bibx add doi:10.1103/PhysRevLett.116.061102 --key ligo --dry-run  # preview and 
 bibx list --sort year                   # table; --format json for scripts
 bibx show Maldacena:1997re              # original entry text, through its closing delimiter
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
+bibx check -f refs.bib                  # report syntax errors and duplicate keys
 ```
 
 Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs.bib`. Without the flag, bibx uses `BIBX_FILE` if set. Leave it unset to discover the only `*.bib` in the current directory. Run `bibx <command> --help` for options and exit codes.
+
+`bibx check` leaves the file untouched and reports findings to stderr with file, line, and column. It exits with code 0 for a clean file, 3 for duplicate keys alone, 1 for syntax or file errors, and 2 for invalid usage.
 
 ## Features
 
@@ -33,12 +36,12 @@ Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs
 ## Caveats
 
 - To edit a bibliography reached through a symbolic link, select the target file directly
-- INSPIRE is the only provider so far; arXiv, ADS, `check`, `fmt` and v2 commands are in the roadmap in `IDEA.md`
+- INSPIRE is the only provider so far; arXiv, ADS, `fmt` and v2 commands are in the roadmap in `IDEA.md`
 - `list` decodes LaTeX where it can, for the table and for `--sort`; JSON values stay raw (see `bibx list --help`)
 
 ## Development
 
-With Rust and [mise](https://mise.jdx.dev/) installed, run `mise install` in each clone to install prek and register the Git pre-commit hook. Run `mise run ci` for the full local checks or `mise tasks ls` to list tasks.
+With Rust and [mise](https://mise.jdx.dev/) installed, run `mise install` in each clone to install prek and register the Git pre-commit hook. Prek runs `bibx check` on staged bibliography files outside the test fixture directories. Run `mise run ci` for the full local checks or `mise tasks ls` to list tasks.
 
 ## Acknowledgements
 

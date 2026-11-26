@@ -1,11 +1,12 @@
 use clap::{Parser, Subcommand};
 
+use crate::commands::FileArgs;
 use crate::commands::add::AddArgs;
 use crate::commands::list::ListArgs;
 use crate::commands::remove::RemoveArgs;
 use crate::commands::show::ShowArgs;
 
-/// Manage a BibTeX file: add, remove, list and show its entries.
+/// Manage and validate a BibTeX file.
 ///
 /// The bib file is chosen from the subcommand's `-f/--file` option, then the `BIBX_FILE`
 /// environment variable, then the only `*.bib` file in the current directory. The file is
@@ -38,4 +39,10 @@ pub enum Command {
     List(ListArgs),
     /// Print one entry as stored in the bib file.
     Show(ShowArgs),
+    /// Check the bib file for syntax errors and duplicate citation keys.
+    ///
+    /// Reports all findings on stderr without editing the file. Exits with code 0 for a
+    /// clean file, 3 for duplicate keys alone, 1 for syntax or file errors, and 2 for
+    /// invalid usage.
+    Check(FileArgs),
 }

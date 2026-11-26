@@ -16,3 +16,19 @@ language = "system"
 entry = "cargo clippy --workspace --all-targets -- -D warnings"
 always_run = true
 pass_filenames = false
+
+[[repos.hooks]]
+id = "bibx-check"
+name = "bibx check"
+language = "system"
+entry = '''sh -c '
+    status=0
+    for file do
+        cargo run --quiet --locked -p bibx -- check --file="$file" || status=1
+    done
+    exit "$status"
+' bibx-check'''
+files = '(?i)\.bib$'
+exclude = '^crates/(bibx|bibx-core|bibx-parser)/tests/fixtures/'
+pass_filenames = true
+require_serial = true
