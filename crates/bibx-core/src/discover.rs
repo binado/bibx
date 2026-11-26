@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
@@ -10,14 +9,13 @@ pub struct Target {
     pub auto_discovered: bool,
 }
 
-/// Choose the bib file(s): `-f` flags, then `BIBX_FILE`, then the single `*.bib` in `cwd`
-/// (not recursive).
-pub fn resolve_files(flags: &[PathBuf], env: Option<OsString>, cwd: &Path) -> Result<Vec<Target>> {
-    if !flags.is_empty() {
-        return Ok(explicit(flags.iter().cloned()));
-    }
-    if let Some(path) = env.filter(|v| !v.is_empty()) {
-        return Ok(explicit([PathBuf::from(path)]));
+/// Choose the bib file: `flag`, else the single `*.bib` in `cwd` (not recursive).
+pub fn resolve_file(flag: Option<&Path>, cwd: &Path) -> Result<Target> {
+    if let Some(path) = flag {
+        return Ok(Target {
+            path: path.to_path_buf(),
+            auto_discovered: false,
+        });
     }
     let mut found = Vec::new();
     let entries = std::fs::read_dir(cwd).map_err(|e| Error::io(cwd, e))?;
@@ -34,24 +32,14 @@ pub fn resolve_files(flags: &[PathBuf], env: Option<OsString>, cwd: &Path) -> Re
     found.sort();
     match found.len() {
         0 => Err(Error::NoBibFile),
-        1 => Ok(vec![Target {
+        1 => Ok(Target {
             path: relative_to(&found[0], cwd),
             auto_discovered: true,
-        }]),
+        }),
         _ => Err(Error::ManyBibFiles(
             found.iter().map(|p| relative_to(p, cwd)).collect(),
         )),
     }
-}
-
-fn explicit(paths: impl IntoIterator<Item = PathBuf>) -> Vec<Target> {
-    paths
-        .into_iter()
-        .map(|path| Target {
-            path,
-            auto_discovered: false,
-        })
-        .collect()
 }
 
 fn relative_to(path: &Path, cwd: &Path) -> PathBuf {
@@ -74,7 +62,7 @@ mod tests {
     fn none() {
         let d = dir(&["notes.txt"]);
         assert!(matches!(
-            resolve_files(&[], None, d.path()),
+            resolve_file(None, d.path()),
             Err(Error::NoBibFile)
         ));
     }
@@ -82,46 +70,36 @@ mod tests {
     #[test]
     fn one_is_auto_discovered_and_named_relatively() {
         let d = dir(&["refs.bib", "notes.txt"]);
-        let t = resolve_files(&[], None, d.path()).unwrap();
+        let t = resolve_file(None, d.path()).unwrap();
         assert_eq!(
             t,
-            [Target {
+            Target {
                 path: "refs.bib".into(),
                 auto_discovered: true
-            }]
+            }
         );
     }
 
     #[test]
     fn many_lists_them_sorted() {
         let d = dir(&["b.bib", "a.bib"]);
-        let Err(Error::ManyBibFiles(files)) = resolve_files(&[], None, d.path()) else {
+        let Err(Error::ManyBibFiles(files)) = resolve_file(None, d.path()) else {
             panic!("expected ManyBibFiles");
         };
         assert_eq!(files, [PathBuf::from("a.bib"), PathBuf::from("b.bib")]);
     }
 
     #[test]
-    fn env_beats_discovery_and_flag_beats_env() {
+    fn flag_beats_discovery() {
         let d = dir(&["a.bib", "b.bib"]);
-        let t = resolve_files(&[], Some("c.bib".into()), d.path()).unwrap();
-        assert_eq!(t[0].path, PathBuf::from("c.bib"));
-        assert!(!t[0].auto_discovered);
-        let t = resolve_files(
-            &["x.bib".into(), "y.bib".into()],
-            Some("c.bib".into()),
-            d.path(),
-        )
-        .unwrap();
-        assert_eq!(t.len(), 2);
-        assert_eq!(t[0].path, PathBuf::from("x.bib"));
-    }
-
-    #[test]
-    fn empty_env_is_unset() {
-        let d = dir(&["a.bib"]);
-        let t = resolve_files(&[], Some("".into()), d.path()).unwrap();
-        assert!(t[0].auto_discovered);
+        let t = resolve_file(Some(Path::new("c.bib")), d.path()).unwrap();
+        assert_eq!(
+            t,
+            Target {
+                path: "c.bib".into(),
+                auto_discovered: false
+            }
+        );
     }
 
     #[test]
@@ -130,7 +108,7 @@ mod tests {
         std::fs::create_dir(d.path().join("sub")).unwrap();
         std::fs::write(d.path().join("sub/x.bib"), "").unwrap();
         assert!(matches!(
-            resolve_files(&[], None, d.path()),
+            resolve_file(None, d.path()),
             Err(Error::NoBibFile)
         ));
     }

@@ -4,7 +4,7 @@ pub mod remove;
 
 use std::path::PathBuf;
 
-use bibx_core::{BibFile, Target, resolve_files};
+use bibx_core::{BibFile, Target, resolve_file};
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -17,8 +17,7 @@ struct FileArgs {
 impl FileArgs {
     fn target(&self) -> anyhow::Result<Target> {
         let cwd = std::env::current_dir()?;
-        let mut targets = resolve_files(self.file.as_slice(), None, &cwd)?;
-        Ok(targets.remove(0))
+        Ok(resolve_file(self.file.as_deref(), &cwd)?)
     }
 }
 
