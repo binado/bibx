@@ -1,12 +1,252 @@
-//! End-to-end tests that need the INSPIRE mock server, which mdtest cannot start.
+//! End-to-end tests that need a mock server, which mdtest cannot start.
 
 use std::fs;
+use std::io::Write;
+use std::path::Path;
 
 use assert_cmd::Command;
 use bibx_core::provider::testing::{MockServer, Reply};
 
 const RECORD: &str = include_str!("fixtures/record.bib");
 const ROUTE: &str = "/api/arxiv/hep-th/9711200?format=bibtex";
+const ARXIV_ID: &str = "2501.01234v2";
+const ARXIV_ROUTE: &str = "/src/2501.01234v2";
+
+fn source(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut tar = tar::Builder::new(Vec::new());
+    for &(path, bytes) in entries {
+        let mut header = tar::Header::new_gnu();
+        header.set_size(bytes.len() as u64);
+        tar.append_data(&mut header, path, bytes).unwrap();
+    }
+    gzip(&tar.into_inner().unwrap())
+}
+
+fn gzip(bytes: &[u8]) -> Vec<u8> {
+    let mut enc = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    enc.write_all(bytes).unwrap();
+    enc.finish().unwrap()
+}
+
+fn source_reply(bytes: Vec<u8>) -> Reply {
+    Reply::bytes(200, "application/gzip", bytes)
+}
+
+fn pull(server: &MockServer, dir: &Path) -> Command {
+    let mut cmd = Command::cargo_bin("bibx").unwrap();
+    cmd.current_dir(dir)
+        .env_clear()
+        .env("BIBX_ARXIV_TEST_URL", &server.url)
+        .env("BIBX_ARXIV_TEST_CACHE", dir.join("cache"))
+        .env("BIBX_FILE", dir.join("refs.bib"))
+        .arg("pull");
+    cmd
+}
+
+#[test]
+fn pull_reuses_a_versioned_bundle_after_listing_its_members() {
+    let bytes = b"% comment\r\n@misc{unchanged, note = {\xff}}";
+    let bundle = source(&[("tex/z.bib", bytes), ("a.bib", b"other")]);
+    let server = MockServer::start(vec![(ARXIV_ROUTE.into(), source_reply(bundle.clone()))]);
+    let dir = tempfile::tempdir().unwrap();
+    let local_bib = dir.path().join("refs.bib");
+    fs::write(&local_bib, b"local bibliography").unwrap();
+    pull(&server, dir.path())
+        .arg("url:https://arxiv.org/pdf/2501.01234v2.pdf?download=1")
+        .assert()
+        .code(4)
+        .stdout("")
+        .stderr(
+            "error: several .bib files found, pass --path to choose one:\n  a.bib\n  tex/z.bib\n",
+        );
+    pull(&server, dir.path())
+        .args(["eprint:2501.01234v2", "--path", "./tex/z.bib"])
+        .assert()
+        .success()
+        .stdout(bytes.as_slice())
+        .stderr("");
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "--path", "z.bib"])
+        .assert()
+        .code(1)
+        .stdout("")
+        .stderr("error: no .bib member matches z.bib\n");
+    assert_eq!(server.requests().len(), 1);
+    assert_eq!(
+        fs::read(dir.path().join("cache/2501.01234v2.gz")).unwrap(),
+        bundle
+    );
+    assert_eq!(fs::read(local_bib).unwrap(), b"local bibliography");
+}
+
+#[test]
+fn pull_caches_legacy_versions_independently_and_checks_latest_each_time() {
+    let server = MockServer::start(vec![
+        (
+            "/src/hep-th/9711200v2".into(),
+            source_reply(source(&[("refs.bib", b"v2")])),
+        ),
+        (
+            "/src/hep-th/9711200v3".into(),
+            source_reply(source(&[("refs.bib", b"v3")])),
+        ),
+        (
+            "/src/hep-th/9711200".into(),
+            source_reply(source(&[("refs.bib", b"latest")])),
+        ),
+    ]);
+    let dir = tempfile::tempdir().unwrap();
+    for (id, bytes) in [
+        ("arxiv:hep-th/9711200v2", "v2"),
+        ("hep-th/9711200v3", "v3"),
+        ("hep-th/9711200v2", "v2"),
+        ("hep-th/9711200", "latest"),
+        ("hep-th/9711200", "latest"),
+    ] {
+        pull(&server, dir.path())
+            .arg(id)
+            .assert()
+            .success()
+            .stdout(bytes)
+            .stderr("");
+    }
+    assert_eq!(
+        server
+            .requests()
+            .iter()
+            .map(|r| r.target.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "/src/hep-th/9711200v2",
+            "/src/hep-th/9711200v3",
+            "/src/hep-th/9711200",
+            "/src/hep-th/9711200"
+        ]
+    );
+    assert_eq!(
+        fs::read_dir(dir.path().join("cache/hep-th"))
+            .unwrap()
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn pull_reports_absent_bibliographies_and_unsupported_sources() {
+    let samples = [
+        (
+            source(&[("main.bbl", b"compiled refs")]),
+            ".bbl file but no .bib file",
+        ),
+        (source(&[("main.tex", b"document")]), "no .bib or .bbl file"),
+        (gzip(br"\documentclass{article}"), "no .bib or .bbl file"),
+        (
+            gzip(b"<html>Unexpected response</html>"),
+            "unsupported arXiv source format",
+        ),
+        (b"%PDF-1.7".to_vec(), "unsupported arXiv source format"),
+    ];
+    for (sample, expected) in samples {
+        let server = MockServer::start(vec![(ARXIV_ROUTE.into(), source_reply(sample))]);
+        let dir = tempfile::tempdir().unwrap();
+        pull(&server, dir.path())
+            .arg(ARXIV_ID)
+            .assert()
+            .code(1)
+            .stdout("")
+            .stderr(predicates::str::contains(expected));
+    }
+    let server = MockServer::start(vec![]);
+    let dir = tempfile::tempdir().unwrap();
+    pull(&server, dir.path())
+        .arg(ARXIV_ID)
+        .assert()
+        .code(1)
+        .stdout("")
+        .stderr("error: source is unavailable for arXiv:2501.01234v2\n");
+}
+
+#[test]
+fn pull_rejects_ambiguous_paths_and_bad_arguments() {
+    let bundle = source(&[("refs.bib", b"a"), ("refs.bib", b"b")]);
+    let server = MockServer::start(vec![(ARXIV_ROUTE.into(), source_reply(bundle))]);
+    let dir = tempfile::tempdir().unwrap();
+    for args in [
+        vec!["doi:10.1/test"],
+        vec![ARXIV_ID, "--path", "../refs.bib"],
+    ] {
+        pull(&server, dir.path())
+            .args(args)
+            .assert()
+            .code(2)
+            .stdout("");
+    }
+    assert!(server.requests().is_empty());
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "--path", "refs.bib"])
+        .assert()
+        .code(1)
+        .stdout("")
+        .stderr("error: archive contains more than one .bib member at refs.bib\n");
+}
+
+#[test]
+fn pull_repairs_corrupt_cache_entries_and_works_without_a_cache() {
+    let bundle = source(&[("refs.bib", b"valid")]);
+    let server = MockServer::start(vec![(ARXIV_ROUTE.into(), source_reply(bundle.clone()))]);
+    let dir = tempfile::tempdir().unwrap();
+    let cache = dir.path().join("cache");
+    let cache_file = cache.join("2501.01234v2.gz");
+    fs::create_dir(&cache).unwrap();
+    fs::write(&cache_file, b"corrupt").unwrap();
+    pull(&server, dir.path())
+        .arg(ARXIV_ID)
+        .assert()
+        .success()
+        .stdout("valid")
+        .stderr("");
+    assert_eq!(fs::read(&cache_file).unwrap(), bundle);
+    fs::remove_file(cache_file).unwrap();
+    fs::remove_dir(&cache).unwrap();
+    fs::write(&cache, b"unavailable").unwrap();
+    pull(&server, dir.path())
+        .arg(ARXIV_ID)
+        .assert()
+        .success()
+        .stdout("valid")
+        .stderr("");
+    assert_eq!(server.requests().len(), 2);
+}
+
+#[test]
+fn pull_leaves_no_cache_entry_or_stdout_on_failed_downloads() {
+    let bundle = source(&[("refs.bib", b"bibliography")]);
+    let declared_length = bundle.len() + 1;
+    let mut corrupt = bundle.clone();
+    corrupt.truncate(corrupt.len() - 4);
+    for (reply, expected) in [
+        (
+            source_reply(bundle.clone()).with_declared_length(declared_length),
+            "could not download",
+        ),
+        (source_reply(corrupt), "invalid arXiv source archive"),
+        (
+            source_reply(bundle).with_declared_length(100 * 1024 * 1024 + 1),
+            "compressed source exceeds",
+        ),
+    ] {
+        let server = MockServer::start(vec![(ARXIV_ROUTE.into(), reply)]);
+        let dir = tempfile::tempdir().unwrap();
+        pull(&server, dir.path())
+            .arg(ARXIV_ID)
+            .assert()
+            .code(1)
+            .stdout("")
+            .stderr(predicates::str::contains(expected));
+        let cache = dir.path().join("cache");
+        assert!(!cache.exists() || fs::read_dir(cache).unwrap().count() == 0);
+    }
+}
 
 fn server() -> MockServer {
     MockServer::start(vec![(ROUTE.into(), Reply::bibtex(RECORD))])

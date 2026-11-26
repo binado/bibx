@@ -3,14 +3,15 @@ use clap::{Parser, Subcommand};
 use crate::commands::FileArgs;
 use crate::commands::add::AddArgs;
 use crate::commands::list::ListArgs;
+use crate::commands::pull::PullArgs;
 use crate::commands::remove::RemoveArgs;
 use crate::commands::show::ShowArgs;
 
-/// Manage and validate a BibTeX file.
+/// Manage and validate BibTeX files and pull bibliographies from arXiv.
 ///
-/// The bib file is chosen from the subcommand's `-f/--file` option, then the `BIBX_FILE`
-/// environment variable, then the only `*.bib` file in the current directory. The file is
-/// edited in place with small diffs; it is never re-serialized.
+/// Commands that use a local bibliography choose the file from `-f/--file`, then the
+/// `BIBX_FILE` environment variable, then the only `*.bib` file in the current directory.
+/// Edits are applied in place as small diffs.
 ///
 /// Data goes to stdout and messages to stderr. Exit codes: 0 ok, 1 error, 2 usage,
 /// 3 duplicate key, 4 ambiguous match.
@@ -45,4 +46,6 @@ pub enum Command {
     /// clean file, 3 for duplicate keys alone, 1 for syntax or file errors, and 2 for
     /// invalid usage.
     Check(FileArgs),
+    /// Write a submitted arXiv bibliography to stdout.
+    Pull(PullArgs),
 }

@@ -8,7 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["inspire"]
+default = ["arxiv", "inspire"]
+arxiv = ["dep:directories", "dep:flate2", "dep:tar", "dep:ureq"]
 inspire = ["dep:ureq"]
 # An in-process HTTP server for tests of crates that use providers.
 testing = []
@@ -16,7 +17,10 @@ testing = []
 [dependencies]
 biblatex.workspace = true
 bibx-parser.workspace = true
+directories = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
 indexmap.workspace = true
+tar = { workspace = true, optional = true }
 tempfile.workspace = true
 thiserror.workspace = true
 ureq = { workspace = true, optional = true }
