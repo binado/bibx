@@ -12,6 +12,7 @@ use crate::error::{Error, Result};
 use crate::identifier::Identifier;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Source {
     Inspire,
 }

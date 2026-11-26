@@ -84,17 +84,12 @@ impl Provider for Inspire {
             .agent
             .get(format!("{}{target}", self.base_url))
             .call()
-            .map_err(|e| Error::Network(e.to_string()))?;
+            .map_err(|e| Error::Network(e.into()))?;
         let status = response.status().as_u16();
         match status {
             200 => {}
             404 => return Err(Error::NotFound(id.clone())),
-            429 => {
-                return Err(Error::Network(
-                    "INSPIRE rate limit reached (15 requests per 5 s); retry in at least 5 s"
-                        .into(),
-                ));
-            }
+            429 => return Err(Error::RateLimited),
             other => {
                 return Err(Error::Provider(format!(
                     "INSPIRE answered with HTTP {other}"
@@ -104,7 +99,7 @@ impl Provider for Inspire {
         let body = response
             .body_mut()
             .read_to_string()
-            .map_err(|e| Error::Network(e.to_string()))?;
+            .map_err(|e| Error::Network(e.into()))?;
         if is_search {
             let hits = bibx_parser::parse(&body).entries().count();
             match hits {

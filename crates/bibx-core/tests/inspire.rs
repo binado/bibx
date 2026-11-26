@@ -97,9 +97,10 @@ fn status_codes_map_to_errors() {
         fetch(&server, "eprint:1111.1111"),
         Err(Error::NotFound(_))
     ));
-    assert!(
-        matches!(fetch(&server, "eprint:2222.2222"), Err(Error::Network(m)) if m.contains("5 s"))
-    );
+    assert!(matches!(
+        fetch(&server, "eprint:2222.2222"),
+        Err(Error::RateLimited)
+    ));
     assert!(
         matches!(fetch(&server, "eprint:3333.3333"), Err(Error::Provider(m)) if m.contains("500"))
     );
@@ -115,6 +116,7 @@ fn unreachable_server_is_a_network_error() {
         .fetch(&Identifier::parse("eprint:1.1"))
         .unwrap_err();
     assert!(matches!(err, Error::Network(_)));
+    assert!(std::error::Error::source(&err).is_some());
 }
 
 #[test]
