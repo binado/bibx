@@ -22,6 +22,14 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Fetch an entry from a provider and append it to the bib file.
+    ///
+    /// The identifier is `<kind>:<value>` with kind `eprint` (also `arxiv`), `doi` or
+    /// `inspire` (a record id or a texkey). Use `url:` for arXiv abstract or PDF links
+    /// and INSPIRE literature links. Examples are `url:https://arxiv.org/abs/2005.12345`
+    /// and `url:https://inspirehep.net/literature/451647`.
+    ///
+    /// The entry is appended as received, with an optional citation key override via
+    /// `--key`. If the key already exists in the file, the command exits with code 3.
     Add(AddArgs),
     /// Delete one entry from the bib file.
     Remove(RemoveArgs),

@@ -12,6 +12,8 @@ cargo install --path crates/bibx
 
 ```sh
 bibx add arxiv:hep-th/9711200           # fetch from INSPIRE and append to the .bib file
+bibx add 'url:https://arxiv.org/pdf/hep-th/9711200v2.pdf'
+bibx add 'url:https://inspirehep.net/literature/451647'
 bibx add doi:10.1103/PhysRevLett.116.061102 --key ligo --dry-run
 bibx list --sort year                   # table; --format json for scripts
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
@@ -23,6 +25,7 @@ Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs
 
 - Edits are byte-range splices: the rest of the file stays byte for byte, and line endings (LF or CRLF) are kept
 - Identifiers of the form `<kind>:<value>` (key, eprint, doi, inspire), with `arxiv:` as an alias for `eprint:`
+- `add` accepts `url:` followed by an arXiv abstract or PDF URL or an INSPIRE literature record URL
 - A duplicate key or an ambiguous match is refused, with its own exit code
 - Lossless parser with spans and per-entry error recovery (`bibx-parser`)
 
