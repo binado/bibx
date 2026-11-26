@@ -12,6 +12,7 @@ repository = "https://github.com/binado/bibx"
 
 [workspace.dependencies]
 anyhow = "1"
+biblatex = "0.12"
 clap = { version = "4", features = ["derive", "env"] }
 comfy-table = "7"
 indexmap = "2"

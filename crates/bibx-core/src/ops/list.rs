@@ -1,19 +1,84 @@
+use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use bibx_parser::Bib;
+use bibx_parser::{Bib, Field, ValuePart};
 use indexmap::IndexMap;
+
+use crate::latex;
+
+/// Fields that hold identifiers, URLs, paths or citation keys rather than LaTeX. biblatex
+/// still strips braces and rewrites `--` in its verbatim mode, so they are not decoded at
+/// all. The first group copies its private list of verbatim fields.
+const OPAQUE_FIELDS: &[&str] = &[
+    "file", "doi", "uri", "eprint", "verba", "verbb", "verbc", "pdf", "url", "urlraw",
+    // Citation keys.
+    "crossref", "xref", "xdata", "entryset", "ids", // The ADS record link.
+    "adsurl",
+];
+
+/// A field value, with whitespace runs collapsed to one space.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Value(Repr);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Repr {
+    /// The inside of a single braced or quoted value.
+    Latex(String),
+    /// Source text that is not decoded.
+    Literal(String),
+}
+
+impl Value {
+    fn new(src: &str, field: &Field<'_>) -> Value {
+        let text = collapse_ws(field.text(src));
+        let delimited = matches!(
+            field.value.as_slice(),
+            [part] if matches!(part.value, ValuePart::Braced(_) | ValuePart::Quoted(_))
+        );
+        let opaque = OPAQUE_FIELDS
+            .iter()
+            .any(|name| field.name.value.eq_ignore_ascii_case(name));
+        Value(if delimited && !opaque {
+            Repr::Latex(text)
+        } else {
+            Repr::Literal(text)
+        })
+    }
+
+    /// The source text: a single braced or quoted value without its delimiters, and
+    /// anything else (macros, `#` joins, bare numbers) as written.
+    pub fn raw(&self) -> &str {
+        match &self.0 {
+            Repr::Latex(text) | Repr::Literal(text) => text,
+        }
+    }
+
+    /// The text to show and order by: LaTeX turned into Unicode where possible.
+    ///
+    /// Math, unknown commands and `~` are kept. This is [`raw`](Value::raw) for macros,
+    /// `#` joins, bare numbers, identifier, URL and citation-key fields, and values that
+    /// cannot be decoded. Each call decodes again.
+    pub fn decoded(&self) -> Cow<'_, str> {
+        if let Repr::Latex(text) = &self.0
+            && let Some(decoded) = latex::decode(text)
+        {
+            return Cow::Owned(collapse_ws(&decoded));
+        }
+        Cow::Borrowed(self.raw())
+    }
+}
 
 /// One entry, as shown by `list`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     pub key: String,
     pub entry_type: String,
-    /// The requested fields that the entry has, by lowercased name, with whitespace runs
-    /// collapsed to one space.
-    pub fields: IndexMap<String, String>,
+    /// The requested fields that the entry has, by lowercased name.
+    pub fields: IndexMap<String, Value>,
 }
 
-/// What to sort by. `key` and `type` are the pseudo-fields; any other name is a bib field.
+/// What to sort by. `key` and `type` are the pseudo-fields; any other name is a bib field,
+/// ordered by its [decoded](Value::decoded) value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SortKey {
     Key,
@@ -82,7 +147,7 @@ pub fn list(src: &str, bib: &Bib, sort: Option<&SortKey>, fields: &[String]) -> 
     let mut rows: Vec<(Sortable, Row)> = bib
         .entries()
         .map(|entry| {
-            let value = |name: &str| entry.field(name).map(|f| collapse_ws(f.text(src)));
+            let value = |name: &str| entry.field(name).map(|f| Value::new(src, f));
             let mut row_fields = IndexMap::new();
             for name in fields {
                 let name = name.to_ascii_lowercase();
@@ -97,7 +162,9 @@ pub fn list(src: &str, bib: &Bib, sort: Option<&SortKey>, fields: &[String]) -> 
                 None => Sortable::Missing,
                 Some(SortKey::Key) => Sortable::from_text(Some(entry.key.value.to_string())),
                 Some(SortKey::Type) => Sortable::from_text(Some(entry.kind.value.to_string())),
-                Some(SortKey::Field(name)) => Sortable::from_text(value(name)),
+                Some(SortKey::Field(name)) => {
+                    Sortable::from_text(value(name).map(|v| v.decoded().into_owned()))
+                }
             };
             (
                 sortable,
@@ -156,10 +223,97 @@ mod tests {
             None,
             &["Title".into(), "year".into(), "key".into()],
         );
-        assert_eq!(rows[0].fields["title"], "Beta two");
-        assert_eq!(rows[0].fields["year"], "2001");
+        assert_eq!(rows[0].fields["title"].raw(), "Beta two");
+        assert_eq!(rows[0].fields["year"].raw(), "2001");
         assert_eq!(rows[1].fields.len(), 1);
         assert_eq!(rows[0].entry_type, "article");
         assert!(!rows[0].fields.contains_key("key"));
+    }
+
+    /// The only field of a one-entry bibliography.
+    fn field(name: &str, source: &str) -> Value {
+        let src = format!("@misc{{k, {name} = {source}}}");
+        let bib = bibx_parser::parse(&src);
+        let mut rows = list(&src, &bib, None, &[name.into()]);
+        rows.remove(0).fields.pop().expect("one field").1
+    }
+
+    #[test]
+    fn braced_and_quoted_values_are_decoded_but_keep_their_source() {
+        for source in [r#"{Schr{\"o}dinger}"#, r#""Schr{\"o}dinger""#] {
+            let value = field("title", source);
+            assert_eq!(value.raw(), r#"Schr{\"o}dinger"#);
+            assert_eq!(value.decoded(), "Schrödinger");
+        }
+    }
+
+    #[test]
+    fn decoded_whitespace_is_collapsed() {
+        assert_eq!(field("title", "{a\\\nb}").decoded(), r"a\ b");
+        assert_eq!(field("journal", r"{\apjl}").decoded(), r"\apjl");
+    }
+
+    #[test]
+    fn opaque_fields_are_not_decoded() {
+        for name in OPAQUE_FIELDS.iter().copied().chain(["DOI", "AdsUrl"]) {
+            let value = field(name, "{a--b_{c}}");
+            assert_eq!(value.decoded(), "a--b_{c}", "{name}");
+        }
+    }
+
+    #[test]
+    fn cross_references_are_left_alone() {
+        for (name, source, expected) in [
+            ("crossref", "{}", ""),
+            ("crossref", "{k}", "k"),
+            ("xdata", "{k}", "k"),
+        ] {
+            assert_eq!(field(name, source).decoded(), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn macros_joins_numbers_and_malformed_values_stay_raw() {
+        for (source, expected) in [
+            ("jan", "jan"),
+            ("{a--b} # foo", "{a--b} # foo"),
+            ("1999", "1999"),
+            ("{Cost $5 -- {more}}", "Cost $5 -- {more}"),
+        ] {
+            assert_eq!(field("title", source).decoded(), expected, "{source}");
+        }
+    }
+
+    fn keys_sorted_by(src: &str, name: &str) -> Vec<String> {
+        let bib = bibx_parser::parse(src);
+        list(src, &bib, Some(&SortKey::parse(name)), &[])
+            .into_iter()
+            .map(|r| r.key)
+            .collect()
+    }
+
+    #[test]
+    fn sorts_by_decoded_text() {
+        let src = concat!(
+            "@misc{zed, title = {Zed}}\n",
+            "@misc{braced, title = {{Beta}}}\n",
+            "@misc{plain, title = {Alpha}}\n",
+            "@misc{broken, title = {Cost $5}}\n",
+            "@misc{tie, title = {B{e}ta}}\n",
+        );
+        assert_eq!(
+            keys_sorted_by(src, "title"),
+            ["plain", "braced", "tie", "broken", "zed"]
+        );
+    }
+
+    #[test]
+    fn numbers_are_parsed_after_decoding() {
+        let src = concat!(
+            "@misc{range, pages = {10--12}}\n",
+            "@misc{ten, pages = {10}}\n",
+            "@misc{nine, pages = {{9}}}\n",
+        );
+        assert_eq!(keys_sorted_by(src, "pages"), ["nine", "ten", "range"]);
     }
 }

@@ -8,6 +8,7 @@ pub mod bibfile;
 pub mod discover;
 pub mod error;
 pub mod identifier;
+mod latex;
 pub mod ops;
 pub mod provider;
 pub mod write;
