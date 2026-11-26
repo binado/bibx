@@ -46,8 +46,8 @@ pub fn run(args: AddArgs) -> anyhow::Result<()> {
         Some(url) => Identifier::from_url(url)?,
         None => Identifier::parse(&args.id),
     };
-    if id.kind == Kind::Key {
-        return Err(Error::UnfetchableKey(id.value).into());
+    if id.kind() == Kind::Key {
+        return Err(Error::UnfetchableKey(id.value().to_string()).into());
     }
     let target = args.file.target()?;
     let file = load(&target)?;

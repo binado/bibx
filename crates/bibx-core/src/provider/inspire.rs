@@ -38,8 +38,8 @@ impl Inspire {
     /// The request path and query for `id`, and whether the answer is a search that must
     /// have exactly one hit.
     fn request(id: &Identifier) -> Result<(String, bool)> {
-        let value = &id.value;
-        Ok(match id.kind {
+        let value = id.value();
+        Ok(match id.kind() {
             Kind::Eprint => (
                 format!(
                     "/api/arxiv/{}?format=bibtex",
@@ -64,7 +64,7 @@ impl Inspire {
             Kind::Key | Kind::Ads => {
                 return Err(Error::Provider(format!(
                     "INSPIRE cannot look up `{}` identifiers; use eprint:, doi: or inspire:",
-                    id.kind.prefix()
+                    id.kind().prefix()
                 )));
             }
         })

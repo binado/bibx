@@ -36,13 +36,27 @@ impl Kind {
 }
 
 /// `<kind>:<value>`. A string without a known prefix is a bare citation key.
+///
+/// Built by [`parse`](Identifier::parse), [`from_url`](Identifier::from_url) or [`FromStr`],
+/// so an eprint is always normalized.
+///
+/// [`FromStr`]: std::str::FromStr
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Identifier {
-    pub kind: Kind,
-    pub value: String,
+    kind: Kind,
+    value: String,
 }
 
 impl Identifier {
+    pub fn kind(&self) -> Kind {
+        self.kind
+    }
+
+    /// The part after the kind's prefix, or the whole key.
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
     /// Split on the first colon; only a known prefix counts as a kind, so `Author:2020abc`
     /// is a key. `key:` spells a key out when it would otherwise start with a known prefix.
     /// The `arxiv:` prefix is a case-insensitive alias for `eprint:`.
