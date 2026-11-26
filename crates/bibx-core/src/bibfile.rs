@@ -60,11 +60,11 @@ impl BibFile {
     /// normalized `eprint` or `doi` field; `inspire:` and `ads:` match the key (both services
     /// use their own id as the key).
     pub fn find<'b, 's>(&self, bib: &'b Bib<'s>, id: &Identifier) -> Vec<&'b Entry<'s>> {
-        let wanted_eprint = normalize_eprint(&id.value);
-        let wanted_doi = normalize_doi(&id.value);
+        let wanted_eprint = normalize_eprint(id.value());
+        let wanted_doi = normalize_doi(id.value());
         bib.entries()
-            .filter(|e| match id.kind {
-                Kind::Key | Kind::Inspire | Kind::Ads => e.key.value == id.value,
+            .filter(|e| match id.kind() {
+                Kind::Key | Kind::Inspire | Kind::Ads => e.key.value == id.value(),
                 Kind::Eprint => e
                     .field("eprint")
                     .is_some_and(|f| normalize_eprint(f.text(&self.src)) == wanted_eprint),
