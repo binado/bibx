@@ -4,7 +4,7 @@ use bibx_core::write::atomic_write;
 use bibx_core::{Error, Identifier, Kind};
 use clap::{Args, ValueEnum};
 
-use super::{load, single_target};
+use super::{FileArgs, load};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum SourceArg {
@@ -41,14 +41,17 @@ pub struct AddArgs {
     /// Print the entry that would be appended and write nothing.
     #[arg(long)]
     dry_run: bool,
+
+    #[command(flatten)]
+    file: FileArgs,
 }
 
-pub fn run(args: AddArgs, files: &[std::path::PathBuf]) -> anyhow::Result<()> {
+pub fn run(args: AddArgs) -> anyhow::Result<()> {
     let id = Identifier::parse(&args.id);
     if id.kind == Kind::Key {
         return Err(Error::UnfetchableKey(id.value).into());
     }
-    let target = single_target(files)?;
+    let target = args.file.target()?;
     let file = load(&target)?;
     let fetched = provider_for(args.source.into()).fetch(&id)?;
     let plan = add(&file, &fetched, args.key.as_deref())?;

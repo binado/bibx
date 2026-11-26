@@ -5,28 +5,21 @@ pub mod remove;
 use std::path::PathBuf;
 
 use bibx_core::{BibFile, Target, resolve_files};
-use clap::CommandFactory;
-use clap::error::ErrorKind;
+use clap::Args;
 
-use crate::cli::Cli;
-
-/// The bib files to act on, per the flag/env/discovery rules.
-pub fn targets(files: &[PathBuf]) -> anyhow::Result<Vec<Target>> {
-    let cwd = std::env::current_dir()?;
-    Ok(resolve_files(files, std::env::var_os("BIBX_FILE"), &cwd)?)
+#[derive(Debug, Args)]
+struct FileArgs {
+    /// BibTeX file to use. Falls back to the only *.bib file in the current directory.
+    #[arg(short, long, value_name = "FILE", env = "BIBX_FILE")]
+    file: Option<PathBuf>,
 }
 
-/// For commands that act on exactly one file; more than one `-f` is a usage error.
-pub fn single_target(files: &[PathBuf]) -> anyhow::Result<Target> {
-    if files.len() > 1 {
-        Cli::command()
-            .error(
-                ErrorKind::ArgumentConflict,
-                "this command takes a single -f/--file",
-            )
-            .exit();
+impl FileArgs {
+    fn target(&self) -> anyhow::Result<Target> {
+        let cwd = std::env::current_dir()?;
+        let mut targets = resolve_files(self.file.as_slice(), None, &cwd)?;
+        Ok(targets.remove(0))
     }
-    Ok(targets(files)?.remove(0))
 }
 
 pub fn load(target: &Target) -> anyhow::Result<BibFile> {

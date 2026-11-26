@@ -10,9 +10,9 @@ use cli::{Cli, Command};
 
 fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
-        Command::Add(args) => commands::add::run(args, &cli.file),
-        Command::Remove(args) => commands::remove::run(args, &cli.file),
-        Command::List(args) => commands::list::run(args, &cli.file),
+        Command::Add(args) => commands::add::run(args),
+        Command::Remove(args) => commands::remove::run(args),
+        Command::List(args) => commands::list::run(args),
     }
 }
 

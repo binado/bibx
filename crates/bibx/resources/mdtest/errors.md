@@ -25,7 +25,7 @@ $ bibx frobnicate
 ```text
 error: unrecognized subcommand 'frobnicate'
 
-Usage: bibx [OPTIONS] <COMMAND>
+Usage: bibx <COMMAND>
 
 For more information, try '--help'.
 ```

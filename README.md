@@ -17,7 +17,7 @@ bibx list --sort year                   # table; --format json for scripts
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
 ```
 
-The bib file is `-f/--file`, then `BIBX_FILE`, then the only `*.bib` in the current directory. Run `bibx <command> --help` for options and exit codes.
+Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs.bib`. Without the flag, bibx uses `BIBX_FILE` if set. Leave it unset to discover the only `*.bib` in the current directory. Run `bibx <command> --help` for options and exit codes.
 
 ## Features
 
