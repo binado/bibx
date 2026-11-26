@@ -19,6 +19,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 tempfile = "3"
 thiserror = "2"
 ureq = { version = "3", default-features = false, features = ["rustls"] }
+url = "2"
 
 # Version is required so cargo publish can rewrite path deps for crates.io.
 bibx-parser = { path = "crates/bibx-parser", version = "0.1.0" }

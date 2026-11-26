@@ -35,6 +35,10 @@ pub enum Error {
     Provider(String),
     #[error("cannot fetch the bare key `{0}`; use inspire:{0}")]
     UnfetchableKey(String),
+    #[error(
+        "expected an arXiv or INSPIRE URL: https://arxiv.org/abs/<id>, https://arxiv.org/pdf/<id> or https://inspirehep.net/literature/<record-id>"
+    )]
+    InvalidIdentifierUrl,
 }
 
 fn list_paths(paths: &[PathBuf]) -> String {

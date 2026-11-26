@@ -75,6 +75,42 @@ fn dry_run_prints_the_entry_and_writes_nothing() {
 }
 
 #[test]
+fn add_from_arxiv_pdf_url() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "").unwrap();
+    bibx(&server, dir.path())
+        .args(["add", "url:https://arxiv.org/pdf/hep-th/9711200v2.pdf"])
+        .assert()
+        .success();
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        format!("{}\n", RECORD.trim_end())
+    );
+}
+
+#[test]
+fn dry_run_from_inspire_literature_url() {
+    let server = MockServer::start(vec![(
+        "/api/literature/451647?format=bibtex".into(),
+        Reply::bibtex(RECORD),
+    )]);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@book{a}\n").unwrap();
+    bibx(&server, dir.path())
+        .args([
+            "add",
+            "url:https://inspirehep.net/literature/451647",
+            "--dry-run",
+        ])
+        .assert()
+        .success()
+        .stdout(format!("{}\n", RECORD.trim_end()));
+    assert_eq!(fs::read_to_string(&path).unwrap(), "@book{a}\n");
+}
+
+#[test]
 fn duplicate_key_exits_3_and_leaves_the_file_alone() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
     let path = dir.path().join("refs.bib");
