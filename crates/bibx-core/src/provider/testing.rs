@@ -11,24 +11,31 @@ use std::thread::JoinHandle;
 pub struct Reply {
     pub status: u16,
     pub content_type: &'static str,
-    pub body: String,
+    pub body: Vec<u8>,
+    declared_length: Option<usize>,
 }
 
 impl Reply {
     pub fn bibtex(body: impl Into<String>) -> Reply {
-        Reply {
-            status: 200,
-            content_type: "application/x-bibtex",
-            body: body.into(),
-        }
+        Self::bytes(200, "application/x-bibtex", body.into().into_bytes())
     }
 
     pub fn status(status: u16, body: impl Into<String>) -> Reply {
+        Self::bytes(status, "application/json", body.into().into_bytes())
+    }
+
+    pub fn bytes(status: u16, content_type: &'static str, body: Vec<u8>) -> Reply {
         Reply {
             status,
-            content_type: "application/json",
-            body: body.into(),
+            content_type,
+            body,
+            declared_length: None,
         }
+    }
+
+    pub fn with_declared_length(mut self, length: usize) -> Self {
+        self.declared_length = Some(length);
+        self
     }
 }
 
@@ -132,12 +139,12 @@ fn handle(
     }
     write!(
         stream,
-        "HTTP/1.1 {} X\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        "HTTP/1.1 {} X\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         reply.status,
         reply.content_type,
-        reply.body.len(),
-        reply.body
+        reply.declared_length.unwrap_or(reply.body.len()),
     )?;
+    stream.write_all(&reply.body)?;
     stream.flush()?;
     stream.shutdown(Shutdown::Both)
 }

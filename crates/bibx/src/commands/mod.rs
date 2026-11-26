@@ -1,6 +1,7 @@
 pub mod add;
 pub mod check;
 pub mod list;
+pub mod pull;
 pub mod remove;
 pub mod show;
 
@@ -29,13 +30,10 @@ pub fn load(target: &Target) -> anyhow::Result<BibFile> {
     Ok(BibFile::load(&target.path)?)
 }
 
-fn write_stdout(command: &str, out: &str) -> anyhow::Result<()> {
+fn write_stdout(command: &str, out: impl AsRef<[u8]>) -> anyhow::Result<()> {
     let mut stdout =
         stdout_writer().with_context(|| format!("opening stdout for {command} output"))?;
-    match stdout
-        .write_all(out.as_bytes())
-        .and_then(|()| stdout.flush())
-    {
+    match stdout.write_all(out.as_ref()).and_then(|()| stdout.flush()) {
         Err(err) if err.kind() == ErrorKind::BrokenPipe => Ok(()),
         result => result.with_context(|| format!("writing {command} output to stdout")),
     }

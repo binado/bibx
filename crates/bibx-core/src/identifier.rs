@@ -80,54 +80,12 @@ impl Identifier {
     /// Resolve an arXiv abstract or PDF URL, or an INSPIRE literature URL.
     /// arXiv versions, URL queries and fragments are discarded.
     pub fn from_url(input: &str) -> error::Result<Self> {
-        let invalid = Error::InvalidIdentifierUrl;
-        let url = Url::parse(input).map_err(|_| Error::InvalidIdentifierUrl)?;
-        let Some((scheme, rest)) = input.split_once("://") else {
-            return Err(invalid);
+        let (kind, id) = url_identifier(input).ok_or(Error::InvalidIdentifierUrl)?;
+        let value = match kind {
+            Kind::Eprint => normalize_eprint(id),
+            _ => id.to_string(),
         };
-        let Some((authority, path)) = rest.split(['?', '#']).next().unwrap_or("").split_once('/')
-        else {
-            return Err(invalid);
-        };
-        let host = url.host_str().unwrap_or("");
-        let raw_host = authority.split(':').next().unwrap_or("");
-        if !matches!(url.scheme(), "http" | "https")
-            || !scheme.eq_ignore_ascii_case(url.scheme())
-            || !raw_host.eq_ignore_ascii_case(host)
-            || authority.contains('@')
-            || url.port().is_some()
-            || url.path().strip_prefix('/') != Some(path)
-        {
-            return Err(invalid);
-        }
-
-        match host {
-            "arxiv.org" => {
-                let id = path
-                    .strip_prefix("abs/")
-                    .or_else(|| {
-                        path.strip_prefix("pdf/")
-                            .map(|id| id.strip_suffix(".pdf").unwrap_or(id))
-                    })
-                    .filter(|id| is_arxiv_id(id))
-                    .ok_or(Error::InvalidIdentifierUrl)?;
-                Ok(Self {
-                    kind: Kind::Eprint,
-                    value: normalize_eprint(id),
-                })
-            }
-            "inspirehep.net" => {
-                let id = path
-                    .strip_prefix("literature/")
-                    .filter(|id| is_ascii_decimal(id))
-                    .ok_or(Error::InvalidIdentifierUrl)?;
-                Ok(Self {
-                    kind: Kind::Inspire,
-                    value: id.to_string(),
-                })
-            }
-            _ => Err(invalid),
-        }
+        Ok(Self { kind, value })
     }
 
     /// For `inspire:` values: all digits is a record id, anything else a texkey.
@@ -140,7 +98,40 @@ fn is_ascii_decimal(value: &str) -> bool {
     !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit())
 }
 
-fn is_arxiv_id(id: &str) -> bool {
+pub(crate) fn url_identifier(input: &str) -> Option<(Kind, &str)> {
+    let url = Url::parse(input).ok()?;
+    let (scheme, rest) = input.split_once("://")?;
+    let (authority, path) = rest.split(['?', '#']).next()?.split_once('/')?;
+    let host = url.host_str()?;
+    let raw_host = authority.split(':').next()?;
+    if !matches!(url.scheme(), "http" | "https")
+        || !scheme.eq_ignore_ascii_case(url.scheme())
+        || !raw_host.eq_ignore_ascii_case(host)
+        || authority.contains('@')
+        || url.port().is_some()
+        || url.path().strip_prefix('/') != Some(path)
+    {
+        return None;
+    }
+
+    match host {
+        "arxiv.org" => path
+            .strip_prefix("abs/")
+            .or_else(|| {
+                path.strip_prefix("pdf/")
+                    .map(|id| id.strip_suffix(".pdf").unwrap_or(id))
+            })
+            .filter(|id| is_arxiv_id(id))
+            .map(|id| (Kind::Eprint, id)),
+        "inspirehep.net" => path
+            .strip_prefix("literature/")
+            .filter(|id| is_ascii_decimal(id))
+            .map(|id| (Kind::Inspire, id)),
+        _ => None,
+    }
+}
+
+pub(crate) fn is_arxiv_id(id: &str) -> bool {
     let (archive, number) = match id.split_once('/') {
         Some((archive, number)) => (Some(archive), number),
         None => (None, id),

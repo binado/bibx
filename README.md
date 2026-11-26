@@ -1,6 +1,6 @@
 # bibx
 
-A CLI for inspecting BibTeX entries, checking bibliographies, and editing a BibTeX file in place with small diffs.
+A CLI for inspecting, checking, and editing BibTeX files and extracting submitted bibliographies from arXiv.
 
 ## Installation
 
@@ -19,9 +19,11 @@ bibx list --sort year                   # table; --format json for scripts
 bibx show Maldacena:1997re              # original entry text, through its closing delimiter
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
 bibx check -f refs.bib                  # report syntax errors and duplicate keys
+bibx pull arxiv:2501.01234v2 > references.bib
+bibx pull arxiv:2501.01234v2 --path tex/refs.bib > references.bib
 ```
 
-Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs.bib`. Without the flag, bibx uses `BIBX_FILE` if set. Leave it unset to discover the only `*.bib` in the current directory. Run `bibx <command> --help` for options and exit codes.
+For commands that work with a local bibliography, set the bib file with `-f/--file`, as in `bibx list -f refs.bib`. Without the flag, bibx uses `BIBX_FILE` if set. Leave it unset to discover the only `*.bib` in the current directory. Run `bibx <command> --help` for options and exit codes.
 
 `bibx check` leaves the file untouched and reports findings to stderr with file, line, and column. It exits with code 0 for a clean file, 3 for duplicate keys alone, 1 for syntax or file errors, and 2 for invalid usage.
 
@@ -30,13 +32,15 @@ Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs
 - Edits are byte-range splices: the rest of the file stays byte for byte, and line endings (LF or CRLF) are kept
 - Identifiers of the form `<kind>:<value>` (key, eprint, doi, inspire), with `arxiv:` as an alias for `eprint:`
 - `add` accepts `url:` followed by an arXiv abstract or PDF URL or an INSPIRE literature record URL
+- `pull` writes the original bibliography bytes to stdout and caches explicitly versioned source bundles in the platform user cache
 - A duplicate key or an ambiguous match is refused, with its own exit code
 - Lossless parser with spans and per-entry error recovery (`bibx-parser`)
 
 ## Caveats
 
 - To edit a bibliography reached through a symbolic link, select the target file directly
-- INSPIRE is the only provider so far; arXiv, ADS, `fmt` and v2 commands are in the roadmap in `IDEA.md`
+- `add` fetches individual entries from INSPIRE
+- ADS, `fmt` and v2 commands are in the roadmap in `IDEA.md`
 - `list` decodes LaTeX where it can, for the table and for `--sort`; JSON values stay raw (see `bibx list --help`)
 
 ## Development

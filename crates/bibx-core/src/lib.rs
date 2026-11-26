@@ -4,6 +4,8 @@
 //! the caller decides what to do with them. Edits are byte-range splices of the original
 //! text, so everything the user did not touch stays byte for byte.
 
+#[cfg(feature = "arxiv")]
+pub mod arxiv;
 pub mod bibfile;
 pub mod discover;
 pub mod error;
