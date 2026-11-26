@@ -1,7 +1,6 @@
 use std::borrow::Cow;
-use std::cmp::Ordering;
 
-use bibx_parser::{Bib, Field, ValuePart};
+use bibx_parser::{Bib, Field, Spanned, ValuePart};
 use indexmap::IndexMap;
 
 use crate::latex;
@@ -30,18 +29,24 @@ enum Repr {
 
 impl Value {
     fn new(src: &str, field: &Field<'_>) -> Value {
-        let text = collapse_ws(field.text(src));
-        let delimited = matches!(
-            field.value.as_slice(),
-            [part] if matches!(part.value, ValuePart::Braced(_) | ValuePart::Quoted(_))
-        );
         let opaque = OPAQUE_FIELDS
             .iter()
             .any(|name| field.name.value.eq_ignore_ascii_case(name));
-        Value(if delimited && !opaque {
-            Repr::Latex(text)
-        } else {
-            Repr::Literal(text)
+        Value(match field.value.as_slice() {
+            [
+                Spanned {
+                    value: ValuePart::Braced(inner) | ValuePart::Quoted(inner),
+                    ..
+                },
+            ] => {
+                let text = collapse_ws(inner);
+                if opaque {
+                    Repr::Literal(text)
+                } else {
+                    Repr::Latex(text)
+                }
+            }
+            _ => Repr::Literal(collapse_ws(field.raw(src))),
         })
     }
 
@@ -97,7 +102,7 @@ impl SortKey {
 }
 
 /// A sort value: missing last, numbers before text, text case-insensitive.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Sortable {
     Number(i64),
     Text(String),
@@ -113,27 +118,6 @@ impl Sortable {
                 Err(_) => Sortable::Text(t.to_lowercase()),
             },
         }
-    }
-}
-
-impl Ord for Sortable {
-    fn cmp(&self, other: &Self) -> Ordering {
-        use Sortable::*;
-        match (self, other) {
-            (Number(a), Number(b)) => a.cmp(b),
-            (Text(a), Text(b)) => a.cmp(b),
-            (Number(_), _) => Ordering::Less,
-            (_, Number(_)) => Ordering::Greater,
-            (Text(_), Missing) => Ordering::Less,
-            (Missing, Text(_)) => Ordering::Greater,
-            (Missing, Missing) => Ordering::Equal,
-        }
-    }
-}
-
-impl PartialOrd for Sortable {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
