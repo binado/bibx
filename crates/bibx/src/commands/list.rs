@@ -1,12 +1,9 @@
-use std::io::{ErrorKind, Write};
-
-use anyhow::Context;
 use bibx_core::ops::list::{Column, Row, absent_fields, list};
 use clap::{Args, ValueEnum};
 use comfy_table::{ContentArrangement, Table, presets};
 use serde_json::{Map, Value, json};
 
-use super::{FileArgs, load};
+use super::{FileArgs, load, write_stdout};
 
 const DEFAULT_FIELDS: [&str; 3] = ["key", "year", "title"];
 
@@ -67,28 +64,7 @@ pub fn run(args: ListArgs) -> anyhow::Result<()> {
         Format::Table => table(&rows, &columns),
         Format::Json => json_output(&rows),
     };
-    let mut stdout = stdout_writer().context("opening stdout for list output")?;
-    match stdout
-        .write_all(out.as_bytes())
-        .and_then(|()| stdout.flush())
-    {
-        Err(err) if err.kind() == ErrorKind::BrokenPipe => Ok(()),
-        result => result.context("writing list output to stdout"),
-    }
-}
-
-#[cfg(unix)]
-fn stdout_writer() -> std::io::Result<impl Write> {
-    use std::os::fd::AsFd;
-
-    // Stdout treats EBADF as success. Writing through a duplicate reports that error.
-    let fd = std::io::stdout().as_fd().try_clone_to_owned()?;
-    Ok(std::fs::File::from(fd))
-}
-
-#[cfg(not(unix))]
-fn stdout_writer() -> std::io::Result<impl Write> {
-    Ok(std::io::stdout().lock())
+    write_stdout("list", &out)
 }
 
 fn table(rows: &[Row], columns: &[Column]) -> String {

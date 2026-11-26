@@ -1,6 +1,6 @@
 # bibx
 
-A CLI that edits a BibTeX file in place with small diffs: fetch entries from INSPIRE, remove them and list them.
+A CLI for inspecting BibTeX entries and editing a BibTeX file in place with small diffs.
 
 ## Installation
 
@@ -16,6 +16,7 @@ bibx add 'url:https://arxiv.org/pdf/hep-th/9711200v2.pdf'
 bibx add 'url:https://inspirehep.net/literature/451647'
 bibx add doi:10.1103/PhysRevLett.116.061102 --key ligo --dry-run  # preview and report the skipped write on stderr
 bibx list --sort year                   # table; --format json for scripts
+bibx show Maldacena:1997re              # original entry text, through its closing delimiter
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
 ```
 

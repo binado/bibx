@@ -13,6 +13,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         Command::Add(args) => commands::add::run(args),
         Command::Remove(args) => commands::remove::run(args),
         Command::List(args) => commands::list::run(args),
+        Command::Show(args) => commands::show::run(args),
     }
 }
 
