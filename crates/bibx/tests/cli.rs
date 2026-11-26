@@ -49,7 +49,7 @@ fn add_with_an_explicit_file_does_not_name_it() {
             "add",
             "-f",
             "refs.bib",
-            "eprint:hep-th/9711200",
+            "arxiv:hep-th/9711200v2",
             "--key",
             "mine",
         ])

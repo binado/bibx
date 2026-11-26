@@ -86,10 +86,10 @@ $ bibx remove Third:2003c
 removed Third:2003c from refs.bib
 ```
 
-## By eprint, ignoring the version
+## By eprint using the arXiv alias, ignoring the version
 
 ```console
-$ bibx remove eprint:2001.00001
+$ bibx remove arXiv:2001.00001v3
 ```
 
 `stdout`:

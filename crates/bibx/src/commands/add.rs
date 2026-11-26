@@ -21,8 +21,8 @@ impl From<SourceArg> for Source {
 
 /// Fetch an entry from a provider and append it to the bib file.
 ///
-/// The identifier is `<kind>:<value>` with kind `eprint`, `doi` or `inspire` (a record id
-/// or a texkey), e.g. `eprint:hep-th/9711200` or `doi:10.1103/PhysRevD.102.123456`. The
+/// The identifier is `<kind>:<value>` with kind `eprint` (also `arxiv`), `doi` or `inspire`
+/// (a record id or a texkey), e.g. `arxiv:hep-th/9711200` or `doi:10.1103/PhysRevD.102.123456`. The
 /// entry is appended exactly as received; with --key only its citation key changes. If the
 /// key already exists in the file, nothing is added (exit code 3).
 #[derive(Debug, Args)]

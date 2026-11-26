@@ -22,6 +22,9 @@ impl Kind {
     }
 
     fn from_prefix(prefix: &str) -> Option<Kind> {
+        if prefix.eq_ignore_ascii_case("arxiv") {
+            return Some(Kind::Eprint);
+        }
         [Kind::Key, Kind::Eprint, Kind::Doi, Kind::Inspire, Kind::Ads]
             .into_iter()
             .find(|k| k.prefix() == prefix)
@@ -38,6 +41,7 @@ pub struct Identifier {
 impl Identifier {
     /// Split on the first colon; only a known prefix counts as a kind, so `Author:2020abc`
     /// is a key. `key:` spells a key out when it would otherwise start with a known prefix.
+    /// The `arxiv:` prefix is a case-insensitive alias for `eprint:`.
     pub fn parse(s: &str) -> Identifier {
         if let Some((prefix, value)) = s.split_once(':')
             && !value.is_empty()
@@ -159,6 +163,10 @@ mod tests {
     fn key_prefix_escapes_a_known_prefix() {
         assert_eq!(id("key:doi:weird"), (Kind::Key, "doi:weird".into()));
         assert_eq!(
+            id("key:arxiv:2005.12345"),
+            (Kind::Key, "arxiv:2005.12345".into())
+        );
+        assert_eq!(
             id("key:Author:2020abc"),
             (Kind::Key, "Author:2020abc".into())
         );
@@ -167,9 +175,10 @@ mod tests {
     #[test]
     fn unknown_or_empty_prefix_is_a_whole_key() {
         assert_eq!(
-            id("arxiv:2005.12345"),
-            (Kind::Key, "arxiv:2005.12345".into())
+            id("unknown:2005.12345"),
+            (Kind::Key, "unknown:2005.12345".into())
         );
+        assert_eq!(id("arxiv:"), (Kind::Key, "arxiv:".into()));
         assert_eq!(id("doi:"), (Kind::Key, "doi:".into()));
         assert_eq!(id(""), (Kind::Key, String::new()));
     }
@@ -179,6 +188,8 @@ mod tests {
         assert_eq!(id("eprint:2005.12345v3").1, "2005.12345");
         assert_eq!(id("eprint:hep-th/9711200v2").1, "hep-th/9711200");
         assert_eq!(id("eprint:arXiv:2005.12345").1, "2005.12345");
+        assert_eq!(id("arxiv:2005.12345v3"), id("eprint:2005.12345"));
+        assert_eq!(id("arXiv:hep-th/9711200v2"), id("eprint:hep-th/9711200"));
         assert_eq!(normalize_eprint("hep-th/9711200"), "hep-th/9711200");
         assert_eq!(normalize_eprint("solv-int/9801001"), "solv-int/9801001");
     }
@@ -204,5 +215,9 @@ mod tests {
         for s in ["doi:10.1/x", "inspire:Foo:2020abc", "Foo:2020abc"] {
             assert_eq!(Identifier::parse(s).to_string(), s);
         }
+        assert_eq!(
+            Identifier::parse("arXiv:2005.12345v3").to_string(),
+            "eprint:2005.12345"
+        );
     }
 }

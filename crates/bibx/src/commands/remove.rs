@@ -7,8 +7,9 @@ use super::{FileArgs, load, named};
 
 /// Delete one entry from the bib file.
 ///
-/// A bare value is a citation key; `eprint:`, `doi:` and `key:` prefixes match the `eprint`
-/// field, the `doi` field and the key. Only the entry's own lines are deleted. The removed
+/// A bare value is a citation key. Use `eprint:` or `arxiv:` to match the `eprint` field,
+/// `doi:` to match the `doi` field, or `key:` to match the key, including keys that start
+/// with a known prefix. Only the entry's own lines are deleted. The removed
 /// entry is always printed to stdout. If several entries match, nothing is removed and the
 /// matches are listed (exit code 4).
 #[derive(Debug, Args)]
