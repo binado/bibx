@@ -31,7 +31,7 @@ The test target needs `harness = false` and a dev-dependency on `datatest-stable
 ## Environment
 
 - `MDTEST_FILTER=<substring>` runs only sections whose name contains it.
-- `MDTEST_UPDATE=1` rewrites `stdout`/`stderr` blocks to match the actual output; review the diff.
+- `MDTEST_UPDATE=1` rewrites `stdout`/`stderr` blocks to match the actual output; review the diff. Nonempty output without a final newline aborts the update for that fixture.
 
 ## Credits
 

@@ -110,7 +110,7 @@ fn rewrite_stream(text: &str, expected: &Option<Expected>, actual: &str) -> Opti
 }
 
 /// Rewrites `stdout`/`stderr` fences of `tests` to match `outcomes`, returning the new text.
-pub(crate) fn blessed(text: &str, tests: &[(&Test, Outcome)]) -> String {
+fn blessed(text: &str, tests: &[(&Test, Outcome)]) -> Result<String, String> {
     let mut edits = Vec::new();
     for (test, outcome) in tests {
         let mut insertion = String::new();
@@ -118,6 +118,12 @@ pub(crate) fn blessed(text: &str, tests: &[(&Test, Outcome)]) -> String {
             ("stdout", &test.stdout, &outcome.stdout),
             ("stderr", &test.stderr, &outcome.stderr),
         ] {
+            if !actual.is_empty() && !actual.ends_with('\n') {
+                return Err(format!(
+                    "{}: cannot bless {label} without a trailing newline",
+                    test.name
+                ));
+            }
             match (expected, actual.is_empty()) {
                 (None, false) => {
                     if !insertion.is_empty() || label == "stdout" || test.stdout.is_none() {
@@ -145,7 +151,7 @@ pub(crate) fn blessed(text: &str, tests: &[(&Test, Outcome)]) -> String {
     for edit in edits {
         out.replace_range(edit.range, &edit.replacement);
     }
-    out
+    Ok(out)
 }
 
 pub(crate) fn run_file(path: &Path, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
@@ -165,7 +171,7 @@ pub(crate) fn run_file(path: &Path, config: &Config) -> Result<(), Box<dyn std::
     if std::env::var_os("MDTEST_UPDATE").is_some() {
         let outcomes: Vec<(&Test, Outcome)> =
             selected.iter().map(|t| (*t, execute(t, config))).collect();
-        let updated = blessed(&text, &outcomes);
+        let updated = blessed(&text, &outcomes)?;
         if updated != text {
             std::fs::write(path, updated)?;
         }
@@ -183,4 +189,28 @@ pub(crate) fn run_file(path: &Path, config: &Config) -> Result<(), Box<dyn std::
         eprintln!("\n{failure}");
     }
     Err(format!("{name}: {} section(s) failed", failures.len()).into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Outcome, blessed};
+    use crate::parse::parse;
+
+    #[test]
+    fn blessing_rejects_unterminated_output() {
+        let text = "# Test\n\n```console\n$ cmd\n```\n\n`stdout`:\n\n```text\nold\n```\n";
+        let tests = parse("test.md", text, "cmd").unwrap();
+        for (stream, stdout, stderr) in [("stdout", "hello", ""), ("stderr", "hello\n", "oops")] {
+            let outcome = Outcome {
+                stdout: stdout.into(),
+                stderr: stderr.into(),
+                code: Some(0),
+            };
+            let err = blessed(text, &[(&tests[0], outcome)]).unwrap_err();
+            assert_eq!(
+                err,
+                format!("test.md - Test: cannot bless {stream} without a trailing newline")
+            );
+        }
+    }
 }
