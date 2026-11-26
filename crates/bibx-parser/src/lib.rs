@@ -114,6 +114,10 @@ impl<'s> Entry<'s> {
 
 impl Field<'_> {
     /// The value's source text, delimiters and `#` included.
+    ///
+    /// # Panics
+    ///
+    /// As [`Span::text`], when `src` is not the text that was parsed.
     pub fn raw<'a>(&self, src: &'a str) -> &'a str {
         match (self.value.first(), self.value.last()) {
             (Some(first), Some(last)) => Span::new(first.span.start, last.span.end).text(src),
@@ -122,6 +126,10 @@ impl Field<'_> {
     }
 
     /// A single braced or quoted value without its delimiters; anything else as raw text.
+    ///
+    /// # Panics
+    ///
+    /// As [`Span::text`], when `src` is not the text that was parsed.
     pub fn text<'a>(&self, src: &'a str) -> &'a str {
         match self.value.as_slice() {
             [
@@ -129,10 +137,10 @@ impl Field<'_> {
                     value: ValuePart::Braced(_) | ValuePart::Quoted(_),
                     span,
                 },
-            ] => span
-                .text(src)
-                .get(1..span.len().saturating_sub(1))
-                .unwrap_or(""),
+            ] => {
+                let delimited = span.text(src);
+                &delimited[1..delimited.len() - 1]
+            }
             _ => self.raw(src),
         }
     }
