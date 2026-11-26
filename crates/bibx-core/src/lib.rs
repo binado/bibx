@@ -14,6 +14,6 @@ pub mod provider;
 pub mod write;
 
 pub use bibfile::{BibFile, LineEnding};
-pub use discover::{Target, resolve_files};
+pub use discover::{Target, resolve_file};
 pub use error::{Error, Result};
 pub use identifier::{Identifier, Kind};
