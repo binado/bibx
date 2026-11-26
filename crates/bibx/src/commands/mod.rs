@@ -1,4 +1,5 @@
 pub mod add;
+pub mod check;
 pub mod list;
 pub mod remove;
 pub mod show;
@@ -11,7 +12,7 @@ use bibx_core::{BibFile, Target, resolve_file};
 use clap::Args;
 
 #[derive(Debug, Args)]
-struct FileArgs {
+pub(crate) struct FileArgs {
     /// BibTeX file to use. Falls back to the only *.bib file in the current directory.
     #[arg(short, long, value_name = "FILE", env = "BIBX_FILE")]
     file: Option<PathBuf>,

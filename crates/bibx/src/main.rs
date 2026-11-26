@@ -8,13 +8,15 @@ use clap::Parser;
 
 use cli::{Cli, Command};
 
-fn run(cli: Cli) -> anyhow::Result<()> {
+fn run(cli: Cli) -> anyhow::Result<ExitCode> {
     match cli.cmd {
         Command::Add(args) => commands::add::run(args),
         Command::Remove(args) => commands::remove::run(args),
         Command::List(args) => commands::list::run(args),
         Command::Show(args) => commands::show::run(args),
-    }
+        Command::Check(args) => return commands::check::run(args),
+    }?;
+    Ok(ExitCode::SUCCESS)
 }
 
 /// 1 for any error, 3 for a duplicate key and 4 for an ambiguous match; usage errors are
@@ -30,7 +32,7 @@ fn exit_code(err: &anyhow::Error) -> u8 {
 fn main() -> ExitCode {
     let cli = Cli::parse();
     match run(cli) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(err) => {
             eprintln!("error: {err:#}");
             ExitCode::from(exit_code(&err))
