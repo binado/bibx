@@ -28,6 +28,7 @@ The bib file is `-f/--file`, then `BIBX_FILE`, then the only `*.bib` in the curr
 
 ## Caveats
 
+- To edit a bibliography reached through a symbolic link, select the target file directly
 - INSPIRE is the only provider so far; arXiv, ADS, `check`, `fmt` and v2 commands are in the roadmap in `IDEA.md`
 - Values are shown as raw LaTeX; nothing is decoded
 
