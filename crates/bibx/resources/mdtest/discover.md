@@ -6,20 +6,55 @@
 @article{A, title = {From a}}
 ```
 
-## Flag before the subcommand
+## A flag before the subcommand is a usage error
 
 ```console
 $ bibx -f a.bib list --fields key,title
+? 2
 ```
 
-`stdout`:
+`stderr`:
 
 ```text
-┌─────┬────────┐
-│ key ┆ title  │
-╞═════╪════════╡
-│ A   ┆ From a │
-└─────┴────────┘
+error: unexpected argument '-f' found
+
+Usage: bibx <COMMAND>
+
+For more information, try '--help'.
+```
+
+## Flags on both sides of the subcommand are a usage error
+
+```console
+$ bibx -f a.bib list --file b.bib
+? 2
+```
+
+`stderr`:
+
+```text
+error: unexpected argument '-f' found
+
+Usage: bibx <COMMAND>
+
+For more information, try '--help'.
+```
+
+## Repeating either spelling after the subcommand is a usage error
+
+```console
+$ bibx list --file a.bib -f b.bib
+? 2
+```
+
+`stderr`:
+
+```text
+error: the argument '--file <FILE>' cannot be used multiple times
+
+Usage: bibx list [OPTIONS]
+
+For more information, try '--help'.
 ```
 
 ## Flag after the subcommand
@@ -52,6 +87,21 @@ $ bibx list --fields key,title
 ╞═════╪════════╡
 │ A   ┆ From a │
 └─────┴────────┘
+```
+
+## Empty BIBX_FILE is a usage error
+
+```console
+$ BIBX_FILE= bibx list --fields key,title
+? 2
+```
+
+`stderr`:
+
+```text
+error: a value is required for '--file <FILE>' but none was supplied
+
+For more information, try '--help'.
 ```
 
 ## BIBX_FILE beats discovery

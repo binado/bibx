@@ -3,7 +3,7 @@ use bibx_core::ops::remove::remove;
 use bibx_core::write::atomic_write;
 use clap::Args;
 
-use super::{load, named, single_target};
+use super::{FileArgs, load, named};
 
 /// Delete one entry from the bib file.
 ///
@@ -19,11 +19,14 @@ pub struct RemoveArgs {
     /// Print the entry that would be removed and write nothing.
     #[arg(long)]
     dry_run: bool,
+
+    #[command(flatten)]
+    file: FileArgs,
 }
 
-pub fn run(args: RemoveArgs, files: &[std::path::PathBuf]) -> anyhow::Result<()> {
+pub fn run(args: RemoveArgs) -> anyhow::Result<()> {
     let id = Identifier::parse(&args.id);
-    let target = single_target(files)?;
+    let target = args.file.target()?;
     let file = load(&target)?;
     let plan = remove(&file, &id)?;
     println!("{}", plan.removed_text);

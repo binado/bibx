@@ -47,9 +47,9 @@ $ bibx add -f refs.bib -f other.bib eprint:2005.12345
 `stderr`:
 
 ```text
-error: this command takes a single -f/--file
+error: the argument '--file <FILE>' cannot be used multiple times
 
-Usage: bibx [OPTIONS] <COMMAND>
+Usage: bibx add [OPTIONS] <ID>
 
 For more information, try '--help'.
 ```

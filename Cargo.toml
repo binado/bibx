@@ -12,7 +12,7 @@ repository = "https://github.com/binado/bibx"
 
 [workspace.dependencies]
 anyhow = "1"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 comfy-table = "7"
 indexmap = "2"
 serde_json = { version = "1", features = ["preserve_order"] }

@@ -6,7 +6,7 @@ use clap::{Args, ValueEnum};
 use comfy_table::{ContentArrangement, Table, presets};
 use serde_json::{Map, Value, json};
 
-use super::{load, single_target};
+use super::{FileArgs, load};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Format {
@@ -34,10 +34,13 @@ pub struct ListArgs {
 
     #[arg(long, value_enum, default_value = "table")]
     format: Format,
+
+    #[command(flatten)]
+    file: FileArgs,
 }
 
-pub fn run(args: ListArgs, files: &[std::path::PathBuf]) -> anyhow::Result<()> {
-    let target = single_target(files)?;
+pub fn run(args: ListArgs) -> anyhow::Result<()> {
+    let target = args.file.target()?;
     let file = load(&target)?;
     let bib = file.parse();
     let sort = args.sort.as_deref().map(SortKey::parse);

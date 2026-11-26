@@ -8,7 +8,7 @@ const BIB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/record.bi
 
 fn list() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_bibx"));
-    command.args(["-f", BIB, "list", "--format", "json"]);
+    command.args(["list", "-f", BIB, "--format", "json"]);
     command
 }
 
