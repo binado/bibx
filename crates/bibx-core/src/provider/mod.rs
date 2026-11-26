@@ -6,6 +6,8 @@ pub mod inspire;
 #[cfg(feature = "testing")]
 pub mod testing;
 
+use std::ops::Range;
+
 use crate::error::{Error, Result};
 use crate::identifier::Identifier;
 
@@ -14,13 +16,33 @@ pub enum Source {
     Inspire,
 }
 
-/// What a provider returned for an identifier.
+/// What a provider returned for an identifier: one well-formed BibTeX entry. Only
+/// [`single_entry`] builds one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fetched {
+    /// From `@` to the closing delimiter.
+    entry: String,
+    /// The byte range of the citation key within `entry`.
+    key: Range<usize>,
+}
+
+impl Fetched {
+    /// The entry exactly as received, from `@` to the closing delimiter.
+    pub fn entry(&self) -> &str {
+        &self.entry
+    }
+
     /// The citation key the provider chose.
-    pub key: String,
-    /// The entry exactly as received, when the source sends BibTeX.
-    pub bibtex: Option<String>,
+    pub fn key(&self) -> &str {
+        &self.entry[self.key.clone()]
+    }
+
+    /// The entry with only its citation key replaced by `key`.
+    pub(crate) fn with_key(&self, key: &str) -> String {
+        let mut entry = self.entry.clone();
+        entry.replace_range(self.key.clone(), key);
+        entry
+    }
 }
 
 pub trait Provider {
@@ -49,8 +71,8 @@ impl Provider for Disabled {
     }
 }
 
-/// Parse a provider's BibTeX body, which must hold exactly one entry, and return its text
-/// (from `@` to the closing delimiter) and key.
+/// Parse a provider's BibTeX body, which must hold exactly one entry. Text around the entry
+/// is dropped.
 pub fn single_entry(body: &str) -> Result<Fetched> {
     let bib = bibx_parser::parse(body);
     if let Some((_, err)) = bib.errors().next() {
@@ -60,10 +82,13 @@ pub fn single_entry(body: &str) -> Result<Fetched> {
     }
     let mut entries = bib.entries();
     match (entries.next(), entries.next()) {
-        (Some(entry), None) => Ok(Fetched {
-            key: entry.key.value.to_string(),
-            bibtex: Some(entry.span.text(body).to_string()),
-        }),
+        (Some(entry), None) => {
+            let (start, key) = (entry.span.start, entry.key.span);
+            Ok(Fetched {
+                entry: entry.span.text(body).to_string(),
+                key: key.start - start..key.end - start,
+            })
+        }
         (None, _) => Err(Error::Parse {
             message: "the response holds no BibTeX entry".into(),
         }),

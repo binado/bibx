@@ -23,8 +23,8 @@ fn eprint_returns_the_entry_and_its_texkey() {
         Reply::bibtex(RECORD),
     )]);
     let fetched = fetch(&server, "eprint:hep-th/9711200v3").unwrap();
-    assert_eq!(fetched.key, "Maldacena:1997re");
-    assert_eq!(fetched.bibtex.unwrap(), RECORD.trim_end());
+    assert_eq!(fetched.key(), "Maldacena:1997re");
+    assert_eq!(fetched.entry(), RECORD.trim_end());
     let requests = server.requests();
     assert_eq!(requests.len(), 1);
     assert_eq!(
@@ -53,7 +53,7 @@ fn doi_and_record_id_use_their_own_routes() {
 fn texkey_is_a_search_with_exactly_one_hit() {
     let server = MockServer::start(vec![(TEXKEY_SEARCH.into(), Reply::bibtex(RECORD))]);
     assert_eq!(
-        fetch(&server, "inspire:Maldacena:1997re").unwrap().key,
+        fetch(&server, "inspire:Maldacena:1997re").unwrap().key(),
         "Maldacena:1997re"
     );
 }
@@ -132,7 +132,7 @@ fn live_eprint() {
     let fetched = Inspire::new()
         .fetch(&Identifier::parse("eprint:hep-th/9711200"))
         .unwrap();
-    assert_eq!(fetched.key, "Maldacena:1997re");
+    assert_eq!(fetched.key(), "Maldacena:1997re");
 }
 
 #[test]
@@ -141,5 +141,5 @@ fn live_doi() {
     let fetched = Inspire::new()
         .fetch(&Identifier::parse("doi:10.1103/PhysRevLett.116.061102"))
         .unwrap();
-    assert!(fetched.key.starts_with("LIGOScientific"));
+    assert!(fetched.key().starts_with("LIGOScientific"));
 }
