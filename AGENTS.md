@@ -13,8 +13,8 @@ Repo-wide guidance for AI agents. Crate-specific rules live in `crates/<crate>/A
 MSRV is Rust 1.88.
 
 ```bash
-just ci                                    # format-check + lint + test + build + doc
-just bless                                 # rewrite expected output in Markdown fixtures (MDTEST_UPDATE=1)
+mise run ci                                # format-check + lint + test + build + doc
+mise run bless                             # rewrite expected output in Markdown fixtures (MDTEST_UPDATE=1)
 cargo test -p bibx-parser                  # parity, recovery and round-trip tests
 cargo test --workspace -- --ignored        # live INSPIRE tests (network)
 ```

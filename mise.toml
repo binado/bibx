@@ -1,0 +1,49 @@
+[tools]
+prek = "latest"
+
+[hooks]
+postinstall = "prek install"
+
+[tasks.format-check]
+run = "cargo fmt --all -- --check"
+
+[tasks.format]
+run = "cargo fmt --all"
+
+[tasks.lint]
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+
+[tasks.test]
+run = "cargo test --workspace --all-features"
+
+[tasks.bless]
+description = "Rewrite expected output in the CLI Markdown fixtures"
+run = "MDTEST_UPDATE=1 cargo test -p bibx --all-features --test mdtest"
+
+[tasks.build]
+run = "cargo build --workspace --all-features"
+
+[tasks.check]
+run = "cargo check --workspace --all-targets --all-features"
+
+[tasks.doc]
+# --lib avoids a documentation output collision between bibx-core and bibx.
+run = 'RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --lib --all-features'
+
+[tasks.ci]
+description = "Run formatting, lint, tests, build, and docs"
+run = [
+    { task = "format-check" },
+    { task = "lint" },
+    { task = "test" },
+    { task = "build" },
+    { task = "doc" },
+]
+
+[tasks.check-all]
+description = "Run formatting, lint, and type checks"
+run = [
+    { task = "format-check" },
+    { task = "lint" },
+    { task = "check" },
+]
