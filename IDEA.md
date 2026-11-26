@@ -135,6 +135,7 @@ The user's file is never re-serialized, except by `bibx fmt`.
   under another key, with arXiv/DOI normalization) come later.
 - `remove` deletes only the text range of the matched entry and writes the result to a temp file,
   then renames it over the original (no half-written files).
+- Writes reject symbolic links. To edit a bibliography, select the target file directly.
 - Keep the file's line endings (LF or CRLF). Assume UTF-8 and fail on anything else.
 - `--dry-run` on `add` and `remove` shows what would change without writing. `remove` always
   prints the entry it removed.
