@@ -1,6 +1,6 @@
 use crate::bibfile::BibFile;
 use crate::error::{Error, Result};
-use crate::provider::{Fetched, single_entry};
+use crate::provider::Fetched;
 
 /// The result of `add`: the whole new file text and the entry that was appended.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,16 +14,14 @@ pub struct AddPlan {
 /// Append `fetched` to `file`. Nothing before the appended text changes. With `key_override`
 /// only the key in the entry header is rewritten.
 pub fn add(file: &BibFile, fetched: &Fetched, key_override: Option<&str>) -> Result<AddPlan> {
-    let bibtex = fetched
-        .bibtex
-        .as_deref()
-        .ok_or_else(|| Error::Provider("the provider returned no BibTeX".into()))?;
-    let parsed = single_entry(bibtex)?;
-    let text = parsed.bibtex.as_deref().unwrap_or(bibtex);
-
     let (key, text) = match key_override {
-        None => (parsed.key, text.to_string()),
-        Some(key) => (key.to_string(), replace_key(text, key)?),
+        None => (fetched.key().to_string(), fetched.entry().to_string()),
+        Some(key) => {
+            if !is_valid_key(key) {
+                return Err(Error::InvalidKey(key.to_string()));
+            }
+            (key.to_string(), fetched.with_key(key))
+        }
     };
 
     let bib = file.parse();
@@ -61,28 +59,6 @@ fn is_valid_key(key: &str) -> bool {
         })
 }
 
-/// Replace only the key span of the single entry in `text`.
-fn replace_key(text: &str, key: &str) -> Result<String> {
-    if !is_valid_key(key) {
-        return Err(Error::InvalidKey(key.to_string()));
-    }
-    let bib = bibx_parser::parse(text);
-    let span = bib
-        .entries()
-        .next()
-        .map(|e| e.key.span)
-        .ok_or_else(|| Error::Parse {
-            message: "no entry to rename".into(),
-        })?;
-    let (head, tail) = (text.get(..span.start), text.get(span.end..));
-    match (head, tail) {
-        (Some(head), Some(tail)) => Ok(format!("{head}{key}{tail}")),
-        _ => Err(Error::Parse {
-            message: "entry key is out of range".into(),
-        }),
-    }
-}
-
 /// Whether the last line of `src` (which ends with a newline) is blank.
 fn ends_with_blank_line(src: &str) -> bool {
     let body = src.strip_suffix('\n').unwrap_or(src);
@@ -95,14 +71,12 @@ fn ends_with_blank_line(src: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::single_entry;
 
     const ENTRY: &str = "@article{Maldacena:1997re,\n    title = \"{T}\",\n    year = \"1998\"\n}";
 
     fn fetched() -> Fetched {
-        Fetched {
-            key: "Maldacena:1997re".into(),
-            bibtex: Some(format!("{ENTRY}\n")),
-        }
+        single_entry(&format!("{ENTRY}\n")).unwrap()
     }
 
     fn run(src: &str, key: Option<&str>) -> Result<AddPlan> {
@@ -179,12 +153,20 @@ mod tests {
     }
 
     #[test]
-    fn bibtex_is_required() {
-        let f = Fetched {
-            key: "k".into(),
-            bibtex: None,
-        };
+    fn the_providers_key_keeps_its_spelling() {
+        assert_eq!(fetched().key(), "Maldacena:1997re");
+    }
+
+    #[test]
+    fn key_override_is_placed_relative_to_the_entry() {
+        let body = format!("% from INSPIRE\n@comment{{x}}\n@preamble{{\"y\"}}\n{ENTRY}\n");
+        let fetched = single_entry(&body).unwrap();
+        assert_eq!(fetched.key(), "Maldacena:1997re");
         let file = BibFile::from_source("x.bib", String::new());
-        assert!(matches!(add(&file, &f, None), Err(Error::Provider(_))));
+        let plan = add(&file, &fetched, Some("mypaper")).unwrap();
+        assert_eq!(
+            plan.entry,
+            ENTRY.replace("Maldacena:1997re", "mypaper") + "\n"
+        );
     }
 }
