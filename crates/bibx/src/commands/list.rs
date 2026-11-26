@@ -22,9 +22,13 @@ pub enum Format {
 ///
 /// `fields` holds the requested fields (other than `key` and `type`) that the entry has, as
 /// raw text with whitespace runs collapsed.
+///
+/// The table, and `--sort` in both formats, turn LaTeX into Unicode where possible. Math,
+/// unknown commands and `~` are kept. Macros, `#` joins, identifier, URL and citation-key
+/// fields, and values that cannot be decoded stay raw.
 #[derive(Debug, Args)]
 pub struct ListArgs {
-    /// Sort by `key`, `type` or any field; a year sorts numerically, missing values last.
+    /// Sort by `key`, `type` or any field; numbers sort numerically, missing values last.
     #[arg(long, value_name = "FIELD")]
     sort: Option<String>,
 
@@ -77,7 +81,11 @@ fn cell(row: &Row, name: &str) -> String {
     match name.to_ascii_lowercase().as_str() {
         "key" => row.key.clone(),
         "type" => row.entry_type.clone(),
-        name => row.fields.get(name).cloned().unwrap_or_default(),
+        name => row
+            .fields
+            .get(name)
+            .map(|v| v.decoded().into_owned())
+            .unwrap_or_default(),
     }
 }
 
@@ -106,7 +114,7 @@ fn json_output(rows: &[Row]) -> String {
             let fields: Map<String, Value> = row
                 .fields
                 .iter()
-                .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+                .map(|(k, v)| (k.clone(), Value::String(v.raw().to_string())))
                 .collect();
             json!({ "key": row.key, "type": row.entry_type, "fields": fields })
         })

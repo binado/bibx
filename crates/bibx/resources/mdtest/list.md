@@ -170,3 +170,88 @@ $ bibx list -f empty.bib --format json
 ```text
 []
 ```
+
+## LaTeX
+
+`latex.bib`:
+
+```bibtex
+@article{Math,
+  title = {Running of $\alpha_s$},
+  pages = {231--252},
+  doi = {10.1000/a--b_c}
+}
+
+@article{Braced,
+  title = {{The {LHC}} \& 5\%},
+  author = {Schr{\"o}dinger, E.}
+}
+
+@misc{Broken,
+  title = {Cost $5 {today}}
+}
+
+@misc{Plain,
+  title = {Zeta}
+}
+```
+
+### The table is decoded where possible
+
+```console
+$ bibx list -f latex.bib --sort title --fields key,title,author,pages,doi
+```
+
+`stdout`:
+
+```text
+┌────────┬───────────────────────┬─────────────────┬─────────┬────────────────┐
+│ key    ┆ title                 ┆ author          ┆ pages   ┆ doi            │
+╞════════╪═══════════════════════╪═════════════════╪═════════╪════════════════╡
+│ Broken ┆ Cost $5 {today}       ┆                 ┆         ┆                │
+│ Math   ┆ Running of $\alpha_s$ ┆                 ┆ 231–252 ┆ 10.1000/a--b_c │
+│ Braced ┆ The LHC & 5%          ┆ Schrödinger, E. ┆         ┆                │
+│ Plain  ┆ Zeta                  ┆                 ┆         ┆                │
+└────────┴───────────────────────┴─────────────────┴─────────┴────────────────┘
+```
+
+### JSON values stay raw but follow the decoded order
+
+```console
+$ bibx list -f latex.bib --sort title --format json
+```
+
+`stdout`:
+
+```text
+[
+  {
+    "key": "Broken",
+    "type": "misc",
+    "fields": {
+      "title": "Cost $5 {today}"
+    }
+  },
+  {
+    "key": "Math",
+    "type": "article",
+    "fields": {
+      "title": "Running of $\\alpha_s$"
+    }
+  },
+  {
+    "key": "Braced",
+    "type": "article",
+    "fields": {
+      "title": "{The {LHC}} \\& 5\\%"
+    }
+  },
+  {
+    "key": "Plain",
+    "type": "misc",
+    "fields": {
+      "title": "Zeta"
+    }
+  }
+]
+```

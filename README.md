@@ -33,7 +33,7 @@ Set the bib file with `-f/--file` after the subcommand, as in `bibx list -f refs
 
 - To edit a bibliography reached through a symbolic link, select the target file directly
 - INSPIRE is the only provider so far; arXiv, ADS, `check`, `fmt` and v2 commands are in the roadmap in `IDEA.md`
-- Values are shown as raw LaTeX; nothing is decoded
+- `list` decodes LaTeX where it can, for the table and for `--sort`; JSON values stay raw (see `bibx list --help`)
 
 ## Development
 
@@ -41,7 +41,7 @@ With Rust and [mise](https://mise.jdx.dev/) installed, run `mise install` in eac
 
 ## Acknowledgements
 
-The mdtest harness is copied from [knf](https://github.com/binado/knf); `biblatex` is the parser's reference in tests, and some of its test files are reused (see `crates/bibx-parser/tests/fixtures/biblatex/ATTRIBUTION`).
+The mdtest harness is copied from [knf](https://github.com/binado/knf); `biblatex` decodes LaTeX for `list` and is the parser's reference in tests, where some of its test files are reused (see `crates/bibx-parser/tests/fixtures/biblatex/ATTRIBUTION`).
 
 ## License
 

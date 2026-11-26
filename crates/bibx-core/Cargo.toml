@@ -14,6 +14,7 @@ inspire = ["dep:ureq"]
 testing = []
 
 [dependencies]
+biblatex.workspace = true
 bibx-parser.workspace = true
 indexmap.workspace = true
 tempfile.workspace = true
