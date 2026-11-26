@@ -146,6 +146,112 @@ $ bibx list -f refs.bib --fields key
 └────────────┘
 ```
 
+## Absent fields
+
+### A field no entry has is reported once
+
+```console
+$ bibx list --fields key,Yearr --sort yearr
+```
+
+`stdout`:
+
+```text
+┌────────────┬───────┐
+│ key        ┆ yearr │
+╞════════════╪═══════╡
+│ Zeta:2001a ┆       │
+│ Alpha:1999 ┆       │
+│ NoYear     ┆       │
+└────────────┴───────┘
+```
+
+`stderr`:
+
+```text
+warning: no entry has the field `yearr`
+```
+
+### A sort field is reported too
+
+```console
+$ bibx list --fields key --sort yaer
+```
+
+`stdout`:
+
+```text
+┌────────────┐
+│ key        │
+╞════════════╡
+│ Zeta:2001a │
+│ Alpha:1999 │
+│ NoYear     │
+└────────────┘
+```
+
+`stderr`:
+
+```text
+warning: no entry has the field `yaer`
+```
+
+### JSON on stdout is unaffected
+
+```console
+$ bibx list --fields yearr --format json
+```
+
+`stdout`:
+
+```text
+[
+  {
+    "key": "Zeta:2001a",
+    "type": "article",
+    "fields": {}
+  },
+  {
+    "key": "Alpha:1999",
+    "type": "book",
+    "fields": {}
+  },
+  {
+    "key": "NoYear",
+    "type": "misc",
+    "fields": {}
+  }
+]
+```
+
+`stderr`:
+
+```text
+warning: no entry has the field `yearr`
+```
+
+### Default fields are not reported
+
+`dates.bib`:
+
+```bibtex
+@misc{Dated, date = {2001}}
+```
+
+```console
+$ bibx list -f dates.bib
+```
+
+`stdout`:
+
+```text
+┌───────┬──────┬───────┐
+│ key   ┆ year ┆ title │
+╞═══════╪══════╪═══════╡
+│ Dated ┆      ┆       │
+└───────┴──────┴───────┘
+```
+
 ## Empty files
 
 `empty.bib`:
@@ -157,6 +263,12 @@ $ bibx list -f refs.bib --fields key
 
 ```console
 $ bibx list -f empty.bib
+```
+
+### Absent fields are not reported
+
+```console
+$ bibx list -f empty.bib --fields yearr
 ```
 
 ### JSON is an empty array

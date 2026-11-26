@@ -1,12 +1,14 @@
 use std::io::{ErrorKind, Write};
 
 use anyhow::Context;
-use bibx_core::ops::list::{Column, Row, list};
+use bibx_core::ops::list::{Column, Row, absent_fields, list};
 use clap::{Args, ValueEnum};
 use comfy_table::{ContentArrangement, Table, presets};
 use serde_json::{Map, Value, json};
 
 use super::{FileArgs, load};
+
+const DEFAULT_FIELDS: [&str; 3] = ["key", "year", "title"];
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Format {
@@ -26,15 +28,20 @@ pub enum Format {
 /// The table, and `--sort` in both formats, turn LaTeX into Unicode where possible. Math,
 /// unknown commands and `~` are kept. Macros, `#` joins, identifier, URL and citation-key
 /// fields, and values that cannot be decoded stay raw.
+///
+/// A field named in `--fields` or `--sort` that no entry has is reported as a warning on
+/// stderr, and the exit code stays 0. The default fields and files without entries are not
+/// reported.
 #[derive(Debug, Args)]
 pub struct ListArgs {
     /// Sort by `key`, `type` or any field; numbers sort numerically, missing values last.
     #[arg(long, value_name = "FIELD")]
     sort: Option<String>,
 
-    /// Comma-separated fields to show. `key` and `type` are always available.
-    #[arg(long, value_delimiter = ',', default_value = "key,year,title")]
-    fields: Vec<String>,
+    /// Comma-separated fields to show. `key` and `type` are always available and mean the
+    /// citation key and the entry type. [default: key,year,title]
+    #[arg(long, value_delimiter = ',')]
+    fields: Option<Vec<String>>,
 
     #[arg(long, value_enum, default_value = "table")]
     format: Format,
@@ -48,7 +55,13 @@ pub fn run(args: ListArgs) -> anyhow::Result<()> {
     let file = load(&target)?;
     let bib = file.parse();
     let sort = args.sort.as_deref().map(Column::parse);
-    let columns: Vec<Column> = args.fields.iter().map(|f| Column::parse(f)).collect();
+    let requested: Option<Vec<Column>> = args
+        .fields
+        .map(|fields| fields.iter().map(|f| Column::parse(f)).collect());
+    for name in absent_fields(&bib, requested.iter().flatten().chain(&sort)) {
+        eprintln!("warning: no entry has the field `{}`", name.as_str());
+    }
+    let columns = requested.unwrap_or_else(|| DEFAULT_FIELDS.map(Column::parse).to_vec());
     let rows = list(&file.src, &bib, sort.as_ref(), &columns);
     let out = match args.format {
         Format::Table => table(&rows, &columns),

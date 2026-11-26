@@ -197,6 +197,28 @@ pub fn list(src: &str, bib: &Bib, sort: Option<&Column>, columns: &[Column]) -> 
     rows.into_iter().map(|(_, row)| row).collect()
 }
 
+/// The bib fields among `columns` that no entry of `bib` has, in order of first appearance and
+/// without repeats. `key` and `type` are never reported, and a bibliography without entries
+/// reports nothing.
+pub fn absent_fields<'a>(
+    bib: &Bib,
+    columns: impl IntoIterator<Item = &'a Column>,
+) -> Vec<&'a FieldName> {
+    let mut absent = Vec::new();
+    if bib.entries().next().is_none() {
+        return absent;
+    }
+    for column in columns {
+        if let Column::Field(name) = column
+            && !absent.contains(&name)
+            && bib.entries().all(|e| e.field(name.as_str()).is_none())
+        {
+            absent.push(name);
+        }
+    }
+    absent
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -241,6 +263,26 @@ mod tests {
         assert!(!rows[0].fields.contains_key("key"));
         let cells = columns.each_ref().map(|c| rows[1].cell(c));
         assert_eq!(cells, [None, Some("1999".into()), Some("a".into())]);
+    }
+
+    fn absent(src: &str, names: &[&str]) -> Vec<String> {
+        let bib = bibx_parser::parse(src);
+        let columns: Vec<Column> = names.iter().map(|n| Column::parse(n)).collect();
+        absent_fields(&bib, &columns)
+            .into_iter()
+            .map(|n| n.as_str().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn absent_fields_are_those_no_entry_has() {
+        let names = ["yearr", "YEAR", "title", "key", "type", "doi", "Yearr"];
+        assert_eq!(absent(SRC, &names), ["yearr", "doi"]);
+    }
+
+    #[test]
+    fn nothing_is_absent_without_entries() {
+        assert!(absent("@string{foo = {bar}}", &["yearr"]).is_empty());
     }
 
     /// The only field of a one-entry bibliography.
