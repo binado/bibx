@@ -26,6 +26,12 @@ pub enum DiagnosticKind<'s> {
         key: &'s str,
         first: Location,
     },
+    /// An entry's key differs from an earlier key only in case: BibTeX rejects it, Biber warns.
+    KeyCaseConflict {
+        key: &'s str,
+        first_key: &'s str,
+        first: Location,
+    },
     /// An entry repeats the eprint or DOI of an earlier entry under another key.
     DuplicatePaper {
         id: Identifier,
@@ -34,7 +40,8 @@ pub enum DiagnosticKind<'s> {
     },
 }
 
-/// Report recovered syntax errors and repeated citation keys, eprints and DOIs in source order.
+/// Report recovered syntax errors and repeated citation keys (case-insensitive), eprints and DOIs
+/// in source order.
 pub fn check(file: &BibFile) -> Vec<Diagnostic<'_>> {
     let line_starts: Vec<_> = std::iter::once(0)
         .chain(file.src.match_indices('\n').map(|(offset, _)| offset + 1))
@@ -49,7 +56,7 @@ pub fn check(file: &BibFile) -> Vec<Diagnostic<'_>> {
     };
 
     let mut diagnostics = Vec::new();
-    let mut keys = HashMap::new();
+    let mut keys: HashMap<String, (&str, usize)> = HashMap::new();
     let mut papers: HashMap<Identifier, (&str, usize)> = HashMap::new();
     for item in file.parse().items {
         match item {
@@ -88,17 +95,27 @@ pub fn check(file: &BibFile) -> Vec<Diagnostic<'_>> {
                         Entry::Occupied(_) => {}
                     }
                 }
-                match keys.entry(key) {
+                match keys.entry(key.to_lowercase()) {
                     Entry::Vacant(first) => {
-                        first.insert(offset);
+                        first.insert((key, offset));
                     }
-                    Entry::Occupied(first) => diagnostics.push(Diagnostic {
-                        location: location(offset),
-                        kind: DiagnosticKind::DuplicateKey {
-                            key,
-                            first: location(*first.get()),
-                        },
-                    }),
+                    Entry::Occupied(first) => {
+                        let (first_key, first_offset) = *first.get();
+                        let first = location(first_offset);
+                        let location = location(offset);
+                        diagnostics.push(Diagnostic {
+                            location,
+                            kind: if first_key == key {
+                                DiagnosticKind::DuplicateKey { key, first }
+                            } else {
+                                DiagnosticKind::KeyCaseConflict {
+                                    key,
+                                    first_key,
+                                    first,
+                                }
+                            },
+                        });
+                    }
                 }
             }
             _ => {}

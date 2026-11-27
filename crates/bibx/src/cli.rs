@@ -34,8 +34,9 @@ pub enum Command {
     ///
     /// The entry is appended as received, with an optional citation key override via
     /// `--key`. A missing file named by `-f` or `BIBX_FILE` is created. If the key already
-    /// exists in the file, or an entry there has the same eprint or DOI, nothing is written
-    /// and the command exits with code 3; `--allow-duplicate` adds a repeated paper anyway.
+    /// exists in the file (ignoring case), or an entry there has the same eprint or DOI,
+    /// nothing is written and the command exits with code 3; `--allow-duplicate` adds a
+    /// repeated paper anyway.
     Add(AddArgs),
     /// Delete one entry from the bib file.
     Remove(RemoveArgs),
@@ -45,9 +46,9 @@ pub enum Command {
     Show(ShowArgs),
     /// Check the bib file for syntax errors and duplicate citation keys, eprints and DOIs.
     ///
-    /// Reports all findings on stderr without editing the file. Exits with code 0 for a
-    /// clean file, 3 for duplicates alone, 1 for syntax or file errors, and 2 for
-    /// invalid usage.
+    /// Keys that differ only in case count as duplicates. Reports all findings on stderr
+    /// without editing the file. Exits with code 0 for a clean file, 3 for duplicates alone,
+    /// 1 for syntax or file errors, and 2 for invalid usage.
     Check(FileArgs),
     /// Write a submitted arXiv bibliography to stdout.
     Pull(PullArgs),

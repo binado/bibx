@@ -31,8 +31,12 @@ pub fn add(
     };
 
     let bib = file.parse();
-    if bib.entries().any(|e| e.key.value == key) {
-        return Err(Error::DuplicateKey(key));
+    let lowercase = key.to_lowercase();
+    if let Some(existing) = bib
+        .entries()
+        .find(|e| e.key.value.to_lowercase() == lowercase)
+    {
+        return Err(Error::DuplicateKey(existing.key.value.to_string()));
     }
     if !allow_duplicate {
         for id in fetched.identifiers() {
@@ -156,6 +160,11 @@ mod tests {
         assert!(matches!(err, Error::DuplicateKey(k) if k == "Maldacena:1997re"));
         // --key avoids it
         assert!(run("@book{Maldacena:1997re}\n", Some("other")).is_ok());
+        // keys that differ only in case collide
+        assert!(matches!(
+            run("@book{MALDACENA:1997re}\n", None),
+            Err(Error::DuplicateKey(k)) if k == "MALDACENA:1997re"
+        ));
         // ... unless the override collides too
         assert!(matches!(
             run("@book{other}\n", Some("other")),
