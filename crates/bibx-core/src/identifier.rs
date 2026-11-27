@@ -15,7 +15,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub fn prefix(self) -> &'static str {
+    pub(crate) fn prefix(self) -> &'static str {
         match self {
             Kind::Key => "key",
             Kind::Eprint => "eprint",
@@ -180,7 +180,7 @@ impl fmt::Display for Identifier {
 }
 
 /// Strip an `arXiv:` prefix and a trailing version (`v2`) from an arXiv id.
-pub fn normalize_eprint(s: &str) -> String {
+pub(crate) fn normalize_eprint(s: &str) -> String {
     let s = s.trim();
     let s = match s.get(..6) {
         Some(p) if p.eq_ignore_ascii_case("arxiv:") => s.get(6..).unwrap_or(s),
@@ -201,7 +201,7 @@ pub fn normalize_eprint(s: &str) -> String {
 }
 
 /// Lowercase a DOI and strip a resolver URL or `doi:` prefix.
-pub fn normalize_doi(s: &str) -> String {
+pub(crate) fn normalize_doi(s: &str) -> String {
     let s = s.trim();
     for prefix in [
         "https://doi.org/",
