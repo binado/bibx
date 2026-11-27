@@ -6,6 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+keywords = ["bibtex", "bibliography", "cli", "inspire", "arxiv"]
+categories = ["command-line-utilities", "text-processing"]
+include = ["src/**", "README.md", "LICENSE"]
 
 [[bin]]
 name = "bibx"
