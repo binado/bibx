@@ -89,3 +89,28 @@ mixed.bib:3:7: error: duplicate citation key `a` (first occurrence at mixed.bib:
 mixed.bib:4:17: error: expected a field value
 mixed.bib:5:7: error: duplicate citation key `a` (first occurrence at mixed.bib:1:7)
 ```
+
+## A paper repeated under another key is reported
+
+`papers.bib`:
+
+```bibtex
+@article{first, eprint = "1207.7214v2", doi = "10.1016/J.physletb.2012.08.020"}
+@article{second, doi = {https://doi.org/10.1016/j.physletb.2012.08.020}}
+@article{third, eprint = {arXiv:1207.7214}}
+@article{third, eprint = {1207.7214}}
+```
+
+```console
+$ bibx check -f papers.bib
+? 3
+```
+
+`stderr`:
+
+```text
+papers.bib:2:10: error: `doi:10.1016/j.physletb.2012.08.020` repeats `first` (first occurrence at papers.bib:1:10)
+papers.bib:3:10: error: `eprint:1207.7214` repeats `first` (first occurrence at papers.bib:1:10)
+papers.bib:4:10: error: `eprint:1207.7214` repeats `first` (first occurrence at papers.bib:1:10)
+papers.bib:4:10: error: duplicate citation key `third` (first occurrence at papers.bib:3:10)
+```

@@ -485,3 +485,32 @@ fn add_keeps_an_entry_saved_while_the_fetch_was_pending() {
         format!("{edited}\n{entry}")
     );
 }
+
+#[test]
+fn same_paper_under_another_key_exits_3_unless_allowed() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    let path = dir.path().join("refs.bib");
+    let existing = "@book{mine, eprint = {hep-th/9711200v1}}\n";
+    fs::write(&path, existing).unwrap();
+    bibx(&server, dir.path())
+        .args(["add", "eprint:hep-th/9711200", "--key", "other"])
+        .assert()
+        .code(3)
+        .stderr(predicates::str::contains("already in the file as `mine`"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), existing);
+    bibx(&server, dir.path())
+        .args([
+            "add",
+            "eprint:hep-th/9711200",
+            "--key",
+            "other",
+            "--allow-duplicate",
+        ])
+        .assert()
+        .success();
+    assert!(
+        fs::read_to_string(&path)
+            .unwrap()
+            .contains("@article{other,")
+    );
+}

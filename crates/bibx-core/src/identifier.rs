@@ -5,7 +5,7 @@ use url::Url;
 use crate::error::{self, Error};
 
 /// What an identifier refers to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Kind {
     Key,
     Eprint,
@@ -41,7 +41,7 @@ impl Kind {
 /// so an eprint is always normalized.
 ///
 /// [`FromStr`]: std::str::FromStr
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Identifier {
     kind: Kind,
     value: String,

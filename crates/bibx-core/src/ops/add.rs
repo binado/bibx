@@ -12,8 +12,14 @@ pub struct AddPlan {
 }
 
 /// Append `fetched` to `file`. Nothing before the appended text changes. With `key_override`
-/// only the key in the entry header is rewritten.
-pub fn add(file: &BibFile, fetched: &Fetched, key_override: Option<&str>) -> Result<AddPlan> {
+/// only the key in the entry header is rewritten. An entry that shares its eprint or DOI with
+/// one already in the file is refused unless `allow_duplicate`.
+pub fn add(
+    file: &BibFile,
+    fetched: &Fetched,
+    key_override: Option<&str>,
+    allow_duplicate: bool,
+) -> Result<AddPlan> {
     let (key, text) = match key_override {
         None => (fetched.key().to_string(), fetched.entry().to_string()),
         Some(key) => {
@@ -27,6 +33,16 @@ pub fn add(file: &BibFile, fetched: &Fetched, key_override: Option<&str>) -> Res
     let bib = file.parse();
     if bib.entries().any(|e| e.key.value == key) {
         return Err(Error::DuplicateKey(key));
+    }
+    if !allow_duplicate {
+        for id in fetched.identifiers() {
+            if let Some(existing) = file.find(&bib, &id).first() {
+                return Err(Error::DuplicatePaper {
+                    id,
+                    key: existing.key.value.to_string(),
+                });
+            }
+        }
     }
 
     let eol = file.line_ending.as_str();
@@ -84,6 +100,7 @@ mod tests {
             &BibFile::from_source("x.bib", src.to_string()),
             &fetched(),
             key,
+            false,
         )
     }
 
@@ -147,6 +164,26 @@ mod tests {
     }
 
     #[test]
+    fn a_paper_under_another_key_is_refused_unless_allowed() {
+        let fetched =
+            single_entry("@article{K,\n  eprint = \"hep-th/9711200\",\n  doi = \"10.1/X\"\n}\n")
+                .unwrap();
+        let file = |src: &str| BibFile::from_source("x.bib", src.to_string());
+        let by_eprint = file("@book{old, eprint = {hep-th/9711200v2}}\n");
+        assert!(matches!(
+            add(&by_eprint, &fetched, None, false),
+            Err(Error::DuplicatePaper { key, .. }) if key == "old"
+        ));
+        let by_doi = file("@book{old, doi = {https://doi.org/10.1/x}}\n");
+        assert!(matches!(
+            add(&by_doi, &fetched, Some("other"), false),
+            Err(Error::DuplicatePaper { key, .. }) if key == "old"
+        ));
+        assert!(add(&by_doi, &fetched, Some("other"), true).is_ok());
+        assert!(add(&file("@book{old, doi = {10.2/y}}\n"), &fetched, None, false).is_ok());
+    }
+
+    #[test]
     fn invalid_override_is_refused() {
         assert!(matches!(run("", Some("a b")), Err(Error::InvalidKey(_))));
         assert!(matches!(run("", Some("")), Err(Error::InvalidKey(_))));
@@ -163,7 +200,7 @@ mod tests {
         let fetched = single_entry(&body).unwrap();
         assert_eq!(fetched.key(), "Maldacena:1997re");
         let file = BibFile::from_source("x.bib", String::new());
-        let plan = add(&file, &fetched, Some("mypaper")).unwrap();
+        let plan = add(&file, &fetched, Some("mypaper"), false).unwrap();
         assert_eq!(
             plan.entry,
             ENTRY.replace("Maldacena:1997re", "mypaper") + "\n"

@@ -37,6 +37,10 @@ pub struct AddArgs {
     #[arg(long)]
     dry_run: bool,
 
+    /// Add the entry even if the file already has one with the same eprint or DOI.
+    #[arg(long)]
+    allow_duplicate: bool,
+
     #[command(flatten)]
     file: FileArgs,
 }
@@ -52,7 +56,7 @@ pub fn run(args: AddArgs) -> anyhow::Result<()> {
     let target = args.file.target()?;
     let fetched = provider_for(args.source.into()).fetch(&id)?;
     let file = load(&target)?;
-    let plan = add(&file, &fetched, args.key.as_deref())?;
+    let plan = add(&file, &fetched, args.key.as_deref(), args.allow_duplicate)?;
     if args.dry_run {
         eprintln!("[dry run] Skipping write to {}", file.path.display());
     } else {

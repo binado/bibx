@@ -32,6 +32,8 @@ pub enum Error {
     AmbiguousInspire(Identifier),
     #[error("an entry with key `{0}` already exists; pass --key to choose another key")]
     DuplicateKey(String),
+    #[error("`{id}` is already in the file as `{key}`; pass --allow-duplicate to add it anyway")]
+    DuplicatePaper { id: Identifier, key: String },
     #[error("invalid citation key `{0}`")]
     InvalidKey(String),
     #[error("network error")]
