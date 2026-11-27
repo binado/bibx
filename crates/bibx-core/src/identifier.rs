@@ -89,7 +89,7 @@ impl Identifier {
     }
 
     /// For `inspire:` values: all digits is a record id, anything else a texkey.
-    pub(crate) fn is_record_id(&self) -> bool {
+    pub fn is_record_id(&self) -> bool {
         self.kind == Kind::Inspire && is_ascii_decimal(&self.value)
     }
 }
