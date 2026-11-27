@@ -14,7 +14,7 @@ use crate::commands::show::ShowArgs;
 /// Edits are applied in place as small diffs.
 ///
 /// Data goes to stdout and messages to stderr. Exit codes: 0 ok, 1 error, 2 usage,
-/// 3 duplicate key, 4 ambiguous match.
+/// 3 duplicate (key, eprint or DOI), 4 ambiguous match.
 #[derive(Debug, Parser)]
 #[command(name = "bibx", version, about)]
 pub struct Cli {
@@ -32,7 +32,9 @@ pub enum Command {
     /// and `url:https://inspirehep.net/literature/451647`.
     ///
     /// The entry is appended as received, with an optional citation key override via
-    /// `--key`. If the key already exists in the file, the command exits with code 3.
+    /// `--key`. If the key already exists in the file, or an entry there has the same eprint or
+    /// DOI, nothing is written and the command exits with code 3; `--allow-duplicate` adds
+    /// a repeated paper anyway.
     Add(AddArgs),
     /// Delete one entry from the bib file.
     Remove(RemoveArgs),
@@ -40,10 +42,10 @@ pub enum Command {
     List(ListArgs),
     /// Print one entry as stored in the bib file.
     Show(ShowArgs),
-    /// Check the bib file for syntax errors and duplicate citation keys.
+    /// Check the bib file for syntax errors and duplicate citation keys, eprints and DOIs.
     ///
     /// Reports all findings on stderr without editing the file. Exits with code 0 for a
-    /// clean file, 3 for duplicate keys alone, 1 for syntax or file errors, and 2 for
+    /// clean file, 3 for duplicates alone, 1 for syntax or file errors, and 2 for
     /// invalid usage.
     Check(FileArgs),
     /// Write a submitted arXiv bibliography to stdout.

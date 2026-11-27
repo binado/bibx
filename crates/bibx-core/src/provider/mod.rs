@@ -38,6 +38,22 @@ impl Fetched {
         &self.entry[self.key.clone()]
     }
 
+    /// The eprint and DOI the entry carries, as identifiers.
+    pub fn identifiers(&self) -> Vec<Identifier> {
+        let bib = bibx_parser::parse(&self.entry);
+        let Some(entry) = bib.entries().next() else {
+            return Vec::new();
+        };
+        [("eprint", "eprint:"), ("doi", "doi:")]
+            .into_iter()
+            .filter_map(|(field, prefix)| {
+                let text = entry.field(field)?.text(&self.entry);
+                Some(Identifier::parse(&format!("{prefix}{text}")))
+            })
+            .filter(|id| !id.value().is_empty())
+            .collect()
+    }
+
     /// The entry with only its citation key replaced by `key`.
     pub(crate) fn with_key(&self, key: &str) -> String {
         let mut entry = self.entry.clone();

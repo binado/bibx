@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use bibx_parser::Item;
 
 use crate::BibFile;
+use crate::identifier::{Identifier, normalize_doi, normalize_eprint};
 
 /// One-based source coordinates. A column counts Unicode characters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -21,10 +22,19 @@ pub struct Diagnostic<'s> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum DiagnosticKind<'s> {
     Syntax(String),
-    DuplicateKey { key: &'s str, first: Location },
+    DuplicateKey {
+        key: &'s str,
+        first: Location,
+    },
+    /// An entry repeats the eprint or DOI of an earlier entry under another key.
+    DuplicatePaper {
+        id: Identifier,
+        first_key: &'s str,
+        first: Location,
+    },
 }
 
-/// Report recovered syntax errors and repeated citation keys in source order.
+/// Report recovered syntax errors and repeated citation keys, eprints and DOIs in source order.
 pub fn check(file: &BibFile) -> Vec<Diagnostic<'_>> {
     let line_starts: Vec<_> = std::iter::once(0)
         .chain(file.src.match_indices('\n').map(|(offset, _)| offset + 1))
@@ -40,6 +50,7 @@ pub fn check(file: &BibFile) -> Vec<Diagnostic<'_>> {
 
     let mut diagnostics = Vec::new();
     let mut keys = HashMap::new();
+    let mut papers: HashMap<Identifier, (&str, usize)> = HashMap::new();
     for item in file.parse().items {
         match item {
             Item::Error { error, .. } => diagnostics.push(Diagnostic {
@@ -49,6 +60,34 @@ pub fn check(file: &BibFile) -> Vec<Diagnostic<'_>> {
             Item::Entry(entry) if !entry.key.value.is_empty() => {
                 let key = entry.key.value;
                 let offset = entry.key.span.start;
+                let ids = [
+                    ("eprint", "eprint:", normalize_eprint as fn(&str) -> String),
+                    ("doi", "doi:", normalize_doi),
+                ]
+                .into_iter()
+                .filter_map(|(field, prefix, normalize)| {
+                    let text = normalize(entry.field(field)?.text(&file.src));
+                    (!text.is_empty()).then(|| Identifier::parse(&format!("{prefix}{text}")))
+                });
+                for id in ids {
+                    match papers.entry(id.clone()) {
+                        Entry::Vacant(first) => {
+                            first.insert((key, offset));
+                        }
+                        Entry::Occupied(first) if first.get().0 != key => {
+                            let (first_key, first_offset) = *first.get();
+                            diagnostics.push(Diagnostic {
+                                location: location(offset),
+                                kind: DiagnosticKind::DuplicatePaper {
+                                    id,
+                                    first_key,
+                                    first: location(first_offset),
+                                },
+                            });
+                        }
+                        Entry::Occupied(_) => {}
+                    }
+                }
                 match keys.entry(key) {
                     Entry::Vacant(first) => {
                         first.insert(offset);

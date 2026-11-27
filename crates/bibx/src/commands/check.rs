@@ -15,6 +15,19 @@ pub(crate) fn run(args: FileArgs) -> anyhow::Result<ExitCode> {
                 code = 1;
                 message
             }
+            DiagnosticKind::DuplicatePaper {
+                id,
+                first_key,
+                first,
+            } => {
+                if code == 0 {
+                    code = 3;
+                }
+                format!(
+                    "`{id}` repeats `{first_key}` (first occurrence at {path}:{}:{})",
+                    first.line, first.column
+                )
+            }
             DiagnosticKind::DuplicateKey { key, first } => {
                 if code == 0 {
                     code = 3;
