@@ -301,6 +301,58 @@ fn add_with_an_explicit_file_appends_and_prints_the_overridden_key() {
 }
 
 #[test]
+fn add_creates_a_missing_explicit_file() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    let entry = format!("{}\n", RECORD.trim_end());
+    bibx(&server, dir.path())
+        .args(["add", "-f", "new.bib", "eprint:hep-th/9711200"])
+        .assert()
+        .success()
+        .stdout(entry.clone());
+    assert_eq!(
+        fs::read_to_string(dir.path().join("new.bib")).unwrap(),
+        entry
+    );
+}
+
+#[test]
+fn add_creates_the_file_named_by_bibx_file() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    bibx(&server, dir.path())
+        .env("BIBX_FILE", "new.bib")
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .success();
+    assert!(dir.path().join("new.bib").exists());
+}
+
+#[test]
+fn failed_fetch_and_dry_run_create_nothing() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    bibx(&server, dir.path())
+        .args(["add", "-f", "new.bib", "eprint:9999.99999"])
+        .assert()
+        .code(1);
+    bibx(&server, dir.path())
+        .args(["add", "-f", "new.bib", "eprint:hep-th/9711200", "--dry-run"])
+        .assert()
+        .success()
+        .stderr("[dry run] Skipping write to new.bib\n");
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn add_without_a_file_in_an_empty_directory_still_errors() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    bibx(&server, dir.path())
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .code(1)
+        .stderr("error: no .bib file found, pass -f\n");
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+}
+
+#[test]
 fn dry_run_prints_the_entry_and_writes_nothing() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
     let path = dir.path().join("refs.bib");

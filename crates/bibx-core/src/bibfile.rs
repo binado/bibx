@@ -43,6 +43,16 @@ impl BibFile {
         Ok(BibFile::from_source(path, src))
     }
 
+    /// Like [`BibFile::load`], but a file that does not exist is `None`.
+    pub fn load_if_exists(path: &Path) -> Result<Option<BibFile>> {
+        match BibFile::load(path) {
+            Err(Error::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Ok(None)
+            }
+            loaded => loaded.map(Some),
+        }
+    }
+
     pub fn from_source(path: impl Into<PathBuf>, src: String) -> BibFile {
         let line_ending = LineEnding::detect(&src);
         BibFile {
@@ -133,6 +143,19 @@ mod tests {
         assert_eq!(LineEnding::detect("a\nb\r\n"), LineEnding::Lf);
         assert_eq!(LineEnding::detect("no newline"), LineEnding::Lf);
         assert_eq!(LineEnding::detect("\nstarts"), LineEnding::Lf);
+    }
+
+    #[test]
+    fn a_missing_file_loads_as_none() {
+        let d = tempfile::tempdir().unwrap();
+        assert!(
+            BibFile::load_if_exists(&d.path().join("a.bib"))
+                .unwrap()
+                .is_none()
+        );
+        std::fs::write(d.path().join("a.bib"), "@a{a}").unwrap();
+        let file = BibFile::load_if_exists(&d.path().join("a.bib")).unwrap();
+        assert_eq!(file.unwrap().src, "@a{a}");
     }
 
     #[test]

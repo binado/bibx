@@ -38,6 +38,22 @@ pub fn atomic_write_if_unchanged(path: &Path, expected: &str, bytes: &[u8]) -> R
     atomic_write(path, bytes)
 }
 
+/// Create `path` with `bytes`, refusing with [`Error::ConcurrentEdit`] if it exists by now.
+pub fn create_new(path: &Path, bytes: &[u8]) -> Result<()> {
+    let mut file = match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(file) => file,
+        Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {
+            return Err(Error::ConcurrentEdit(path.to_path_buf()));
+        }
+        Err(err) => return Err(Error::io(path, err)),
+    };
+    file.write_all(bytes).map_err(|e| Error::io(path, e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,6 +68,17 @@ mod tests {
         assert!(matches!(err, Error::ConcurrentEdit(path) if path == p));
         assert_eq!(std::fs::read_to_string(&p).unwrap(), "old\nconcurrent\n");
         assert_eq!(std::fs::read_dir(d.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn create_new_writes_a_new_file_and_refuses_an_existing_one() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("a.bib");
+        create_new(&p, b"new\n").unwrap();
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "new\n");
+        let err = create_new(&p, b"other\n").unwrap_err();
+        assert!(matches!(err, Error::ConcurrentEdit(path) if path == p));
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "new\n");
     }
 
     #[test]

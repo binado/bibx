@@ -33,9 +33,9 @@ pub enum Command {
     /// `https://inspirehep.net/literature/451647`.
     ///
     /// The entry is appended as received, with an optional citation key override via
-    /// `--key`. If the key already exists in the file, or an entry there has the same eprint or
-    /// DOI, nothing is written and the command exits with code 3; `--allow-duplicate` adds
-    /// a repeated paper anyway.
+    /// `--key`. A missing file named by `-f` or `BIBX_FILE` is created. If the key already
+    /// exists in the file, or an entry there has the same eprint or DOI, nothing is written
+    /// and the command exits with code 3; `--allow-duplicate` adds a repeated paper anyway.
     Add(AddArgs),
     /// Delete one entry from the bib file.
     Remove(RemoveArgs),
