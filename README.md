@@ -35,7 +35,7 @@ For commands that work with a local bibliography, set the bib file with `-f/--fi
 - `add`, `show` and `remove` accept an arXiv abstract or PDF URL or an INSPIRE literature record URL, with or without a `url:` prefix; `add` also accepts a bare arXiv id
 - `pull` writes the original bibliography bytes to stdout and caches explicitly versioned source bundles in the platform user cache
 - `add` refuses a duplicate key, or a paper whose eprint or DOI is already in the file (`--allow-duplicate` overrides the latter); an ambiguous match is refused too, each with its own exit code
-- `add` fetches before reading the file and refuses to write if the file changed meanwhile
+- `add` creates a missing file named by `-f` or `BIBX_FILE`; it fetches before reading the file and refuses to write if the file changed or appeared meanwhile
 - Lossless parser with spans and per-entry error recovery (`bibx-parser`)
 
 ## Caveats

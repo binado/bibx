@@ -29,6 +29,11 @@ impl FileArgs {
 /// Load the file, warning on stderr when malformed entries are being ignored.
 pub fn load(target: &Target) -> anyhow::Result<BibFile> {
     let file = load_quiet(target)?;
+    warn_skipped(&file);
+    Ok(file)
+}
+
+fn warn_skipped(file: &BibFile) {
     let skipped = file.skipped();
     if skipped > 0 {
         let plural = if skipped == 1 { "entry" } else { "entries" };
@@ -36,6 +41,14 @@ pub fn load(target: &Target) -> anyhow::Result<BibFile> {
             "warning: skipped {skipped} malformed {plural} in {}; run `bibx check` for details",
             file.path.display()
         );
+    }
+}
+
+/// Like [`load`], but a file that does not exist is `None`.
+pub fn load_if_exists(target: &Target) -> anyhow::Result<Option<BibFile>> {
+    let file = BibFile::load_if_exists(&target.path)?;
+    if let Some(file) = &file {
+        warn_skipped(file);
     }
     Ok(file)
 }
