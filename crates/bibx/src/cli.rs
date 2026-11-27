@@ -27,9 +27,10 @@ pub enum Command {
     /// Fetch an entry from a provider and append it to the bib file.
     ///
     /// The identifier is `<kind>:<value>` with kind `eprint` (also `arxiv`), `doi` or
-    /// `inspire` (a record id or a texkey). Use `url:` for arXiv abstract or PDF links
-    /// and INSPIRE literature links. Examples are `url:https://arxiv.org/abs/2005.12345`
-    /// and `url:https://inspirehep.net/literature/451647`.
+    /// `inspire` (a record id or a texkey). A bare arXiv id is an eprint, and arXiv abstract
+    /// or PDF links and INSPIRE literature links are recognized, with or without `url:`.
+    /// Examples are `2005.12345`, `https://arxiv.org/abs/2005.12345` and
+    /// `https://inspirehep.net/literature/451647`.
     ///
     /// The entry is appended as received, with an optional citation key override via
     /// `--key`. If the key already exists in the file, or an entry there has the same eprint or

@@ -12,12 +12,13 @@ cargo install --path crates/bibx
 
 ```sh
 bibx add arxiv:hep-th/9711200           # fetch from INSPIRE, append to the .bib file, and print the entry
-bibx add 'url:https://arxiv.org/pdf/hep-th/9711200v2.pdf'
-bibx add 'url:https://inspirehep.net/literature/451647'
+bibx add 2005.12345                     # a bare arXiv id is an eprint
+bibx add https://arxiv.org/pdf/hep-th/9711200v2.pdf
+bibx add https://inspirehep.net/literature/451647
 bibx add doi:10.1103/PhysRevLett.116.061102 --key ligo --dry-run  # preview and report the skipped write on stderr
 bibx list --sort year                   # table; --format json for scripts
 bibx show Maldacena:1997re              # original entry text, through its closing delimiter
-bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
+bibx remove Maldacena:1997re            # also eprint:<id>, doi:<doi> and URLs
 bibx check -f refs.bib                  # report syntax errors and duplicate keys, eprints and DOIs
 bibx pull arxiv:2501.01234v2 > references.bib
 bibx pull arxiv:2501.01234v2 --path tex/refs.bib > references.bib
@@ -31,7 +32,7 @@ For commands that work with a local bibliography, set the bib file with `-f/--fi
 
 - Edits are byte-range splices: the rest of the file stays byte for byte, and line endings (LF or CRLF) are kept
 - Identifiers of the form `<kind>:<value>` (key, eprint, doi, inspire), with `arxiv:` as an alias for `eprint:`
-- `add` accepts `url:` followed by an arXiv abstract or PDF URL or an INSPIRE literature record URL
+- `add`, `show` and `remove` accept an arXiv abstract or PDF URL or an INSPIRE literature record URL, with or without a `url:` prefix; `add` also accepts a bare arXiv id
 - `pull` writes the original bibliography bytes to stdout and caches explicitly versioned source bundles in the platform user cache
 - `add` refuses a duplicate key, or a paper whose eprint or DOI is already in the file (`--allow-duplicate` overrides the latter); an ambiguous match is refused too, each with its own exit code
 - `add` fetches before reading the file and refuses to write if the file changed meanwhile
