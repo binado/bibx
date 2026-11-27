@@ -19,12 +19,18 @@ impl Inspire {
             .ok()
             .filter(|u| !u.is_empty())
         {
-            return Self::with_base_url(url);
+            return Self::build(url);
         }
-        Self::with_base_url(DEFAULT_URL)
+        Self::build(DEFAULT_URL)
     }
 
+    /// Talks to `base_url` instead of inspirehep.net; for tests.
+    #[cfg(feature = "testing")]
     pub fn with_base_url(base_url: impl Into<String>) -> Self {
+        Self::build(base_url)
+    }
+
+    fn build(base_url: impl Into<String>) -> Self {
         let agent = ureq::Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(30)))
             .user_agent(concat!("bibx/", env!("CARGO_PKG_VERSION")))

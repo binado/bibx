@@ -12,7 +12,7 @@ pub enum LineEnding {
 }
 
 impl LineEnding {
-    pub fn as_str(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             LineEnding::Lf => "\n",
             LineEnding::Crlf => "\r\n",
@@ -20,7 +20,7 @@ impl LineEnding {
     }
 
     /// From the first newline; LF when there is none.
-    pub fn detect(src: &str) -> LineEnding {
+    pub(crate) fn detect(src: &str) -> LineEnding {
         match src.find('\n') {
             Some(i) if src.as_bytes().get(i.wrapping_sub(1)) == Some(&b'\r') => LineEnding::Crlf,
             _ => LineEnding::Lf,
