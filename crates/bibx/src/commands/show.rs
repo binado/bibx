@@ -8,14 +8,15 @@ use super::{FileArgs, load, write_stdout};
 ///
 /// A bare value is a citation key. Use `eprint:` or `arxiv:` to match the `eprint` field,
 /// `doi:` to match the `doi` field, or `key:` to match the key, including keys that start
-/// with a known prefix.
+/// with a known prefix. An arXiv or INSPIRE URL (optionally after `url:`) matches by its
+/// eprint or INSPIRE id.
 ///
 /// Stdout contains the entry from its @ through its closing delimiter, without an added
 /// newline. If no entry matches, the command exits with code 1. If several entries
 /// match, the matching keys are listed on stderr and the command exits with code 4.
 #[derive(Debug, Args)]
 pub struct ShowArgs {
-    /// Which entry, e.g. `Author:2020abc`, `eprint:2005.12345` or `doi:10.1103/...`.
+    /// Which entry, e.g. `Author:2020abc`, `eprint:2005.12345`, `doi:10.1103/...` or an arXiv URL.
     id: String,
 
     #[command(flatten)]
@@ -23,7 +24,7 @@ pub struct ShowArgs {
 }
 
 pub fn run(args: ShowArgs) -> anyhow::Result<()> {
-    let id = Identifier::parse(&args.id);
+    let id = Identifier::from_arg(&args.id)?;
     let file = load(&args.file.target()?)?;
     write_stdout("show", show(&file, &id)?)
 }

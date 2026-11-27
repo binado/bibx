@@ -315,18 +315,25 @@ fn dry_run_prints_the_entry_and_writes_nothing() {
 }
 
 #[test]
-fn add_from_arxiv_pdf_url() {
-    let (server, dir) = (server(), tempfile::tempdir().unwrap());
-    let path = dir.path().join("refs.bib");
-    fs::write(&path, "").unwrap();
-    bibx(&server, dir.path())
-        .args(["add", "url:https://arxiv.org/pdf/hep-th/9711200v2.pdf"])
-        .assert()
-        .success();
-    assert_eq!(
-        fs::read_to_string(&path).unwrap(),
-        format!("{}\n", RECORD.trim_end())
-    );
+fn add_from_an_arxiv_url_or_a_bare_arxiv_id() {
+    for id in [
+        "url:https://arxiv.org/pdf/hep-th/9711200v2.pdf",
+        "https://arxiv.org/abs/hep-th/9711200",
+        "hep-th/9711200v2",
+    ] {
+        let (server, dir) = (server(), tempfile::tempdir().unwrap());
+        let path = dir.path().join("refs.bib");
+        fs::write(&path, "").unwrap();
+        bibx(&server, dir.path())
+            .args(["add", id])
+            .assert()
+            .success();
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            format!("{}\n", RECORD.trim_end()),
+            "{id}"
+        );
+    }
 }
 
 #[test]
@@ -341,7 +348,7 @@ fn dry_run_from_inspire_literature_url() {
     bibx(&server, dir.path())
         .args([
             "add",
-            "url:https://inspirehep.net/literature/451647",
+            "https://inspirehep.net/literature/451647",
             "--dry-run",
         ])
         .assert()

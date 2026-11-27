@@ -22,7 +22,7 @@ impl From<SourceArg> for Source {
 /// Fetch an entry from a provider, append it to the bib file, and print it to stdout.
 #[derive(Debug, Args)]
 pub struct AddArgs {
-    /// What to fetch, e.g. `eprint:2005.12345`.
+    /// What to fetch, e.g. `eprint:2005.12345`, `2005.12345` or an arXiv or INSPIRE URL.
     id: String,
 
     /// Where to fetch it from.
@@ -46,10 +46,7 @@ pub struct AddArgs {
 }
 
 pub fn run(args: AddArgs) -> anyhow::Result<()> {
-    let id = match args.id.strip_prefix("url:") {
-        Some(url) => Identifier::from_url(url)?,
-        None => Identifier::parse(&args.id),
-    };
+    let id = Identifier::from_fetch_arg(&args.id)?;
     if id.kind() == Kind::Key {
         return Err(Error::UnfetchableKey(id.value().to_string()).into());
     }
