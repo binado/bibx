@@ -20,6 +20,8 @@ pub enum Error {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("{} changed while bibx was working; nothing was written, run the command again", .0.display())]
+    ConcurrentEdit(PathBuf),
     #[error("invalid BibTeX: {message}")]
     Parse { message: String },
     #[error("no entry matches `{0}`")]

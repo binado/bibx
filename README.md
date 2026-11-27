@@ -34,6 +34,7 @@ For commands that work with a local bibliography, set the bib file with `-f/--fi
 - `add` accepts `url:` followed by an arXiv abstract or PDF URL or an INSPIRE literature record URL
 - `pull` writes the original bibliography bytes to stdout and caches explicitly versioned source bundles in the platform user cache
 - A duplicate key or an ambiguous match is refused, with its own exit code
+- `add` fetches before reading the file and refuses to write if the file changed meanwhile
 - Lossless parser with spans and per-entry error recovery (`bibx-parser`)
 
 ## Caveats

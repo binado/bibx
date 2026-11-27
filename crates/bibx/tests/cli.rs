@@ -441,3 +441,47 @@ fn remove_dry_run_writes_nothing() {
         .stdout("@a{a}\n");
     assert_eq!(fs::read_to_string(&path).unwrap(), "@a{a}\n");
 }
+
+#[test]
+fn add_keeps_an_entry_saved_while_the_fetch_was_pending() {
+    use std::io::Read;
+    use std::net::TcpListener;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@book{a, title = {A}}\n").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let edited = "@book{a, title = {A}}\n\n@book{b, title = {B}}\n";
+    let server = {
+        let path = path.clone();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = stream.read(&mut buf);
+            fs::write(&path, edited).unwrap();
+            let body = RECORD.as_bytes();
+            let head = format!(
+                "HTTP/1.1 200 OK\r\ncontent-type: application/x-bibtex\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(head.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+        })
+    };
+    let entry = format!("{}\n", RECORD.trim_end());
+    Command::cargo_bin("bibx")
+        .unwrap()
+        .current_dir(dir.path())
+        .env_clear()
+        .env("BIBX_INSPIRE_URL", url)
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .success()
+        .stdout(entry.clone());
+    server.join().unwrap();
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        format!("{edited}\n{entry}")
+    );
+}
