@@ -4,7 +4,7 @@ use bibx_core::write::{atomic_write_if_unchanged, create_new};
 use bibx_core::{BibFile, Error, Identifier, Kind};
 use clap::{Args, ValueEnum};
 
-use super::{FileArgs, load_if_exists};
+use super::{FileArgs, load, load_if_exists};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum SourceArg {
@@ -52,7 +52,12 @@ pub fn run(args: AddArgs) -> anyhow::Result<()> {
     }
     let target = args.file.target()?;
     let fetched = provider_for(args.source.into()).fetch(&id)?;
-    let (file, exists) = match load_if_exists(&target)? {
+    let loaded = if target.auto_discovered {
+        Some(load(&target)?)
+    } else {
+        load_if_exists(&target)?
+    };
+    let (file, exists) = match loaded {
         Some(file) => (file, true),
         None => (BibFile::from_source(&target.path, String::new()), false),
     };

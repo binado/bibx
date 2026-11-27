@@ -546,6 +546,45 @@ fn add_keeps_an_entry_saved_while_the_fetch_was_pending() {
 }
 
 #[test]
+fn add_does_not_recreate_a_discovered_file_deleted_during_the_fetch() {
+    use std::io::Read;
+    use std::net::TcpListener;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@book{a, title = {A}}\n").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let server = {
+        let path = path.clone();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = stream.read(&mut buf);
+            fs::remove_file(&path).unwrap();
+            let body = RECORD.as_bytes();
+            let head = format!(
+                "HTTP/1.1 200 OK\r\ncontent-type: application/x-bibtex\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(head.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+        })
+    };
+    Command::cargo_bin("bibx")
+        .unwrap()
+        .current_dir(dir.path())
+        .env_clear()
+        .env("BIBX_INSPIRE_TEST_URL", url)
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .failure()
+        .stdout("");
+    server.join().unwrap();
+    assert!(!path.exists());
+}
+
+#[test]
 fn same_paper_under_another_key_exits_3_unless_allowed() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
     let path = dir.path().join("refs.bib");
