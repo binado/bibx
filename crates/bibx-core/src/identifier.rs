@@ -15,7 +15,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub fn prefix(self) -> &'static str {
+    pub(crate) fn prefix(self) -> &'static str {
         match self {
             Kind::Key => "key",
             Kind::Eprint => "eprint",
@@ -37,8 +37,8 @@ impl Kind {
 
 /// `<kind>:<value>`. A string without a known prefix is a bare citation key.
 ///
-/// Built by [`parse`](Identifier::parse), [`from_url`](Identifier::from_url) or [`FromStr`],
-/// so an eprint is always normalized.
+/// Built by [`parse`](Identifier::parse), [`from_url`](Identifier::from_url), the `from_*arg`
+/// constructors or [`FromStr`], so an eprint is always normalized.
 ///
 /// [`FromStr`]: std::str::FromStr
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -75,6 +75,32 @@ impl Identifier {
             kind: Kind::Key,
             value: s.to_string(),
         }
+    }
+
+    /// Like [`parse`](Identifier::parse), but a `url:` prefix or a bare `http(s)://` link is
+    /// resolved with [`from_url`](Identifier::from_url).
+    pub fn from_arg(s: &str) -> error::Result<Self> {
+        if let Some(url) = s.strip_prefix("url:") {
+            return Self::from_url(url);
+        }
+        let lower = s.get(..8).unwrap_or(s).to_ascii_lowercase();
+        if lower.starts_with("https://") || lower.starts_with("http://") {
+            return Self::from_url(s);
+        }
+        Ok(Self::parse(s))
+    }
+
+    /// Like [`from_arg`](Identifier::from_arg), but a bare arXiv id is an eprint, since a
+    /// bare key cannot be fetched.
+    pub fn from_fetch_arg(s: &str) -> error::Result<Self> {
+        let id = Self::from_arg(s)?;
+        if id.kind == Kind::Key && is_arxiv_id(&id.value) {
+            return Ok(Self {
+                kind: Kind::Eprint,
+                value: normalize_eprint(&id.value),
+            });
+        }
+        Ok(id)
     }
 
     /// Resolve an arXiv abstract or PDF URL, or an INSPIRE literature URL.
@@ -180,7 +206,7 @@ impl fmt::Display for Identifier {
 }
 
 /// Strip an `arXiv:` prefix and a trailing version (`v2`) from an arXiv id.
-pub fn normalize_eprint(s: &str) -> String {
+pub(crate) fn normalize_eprint(s: &str) -> String {
     let s = s.trim();
     let s = match s.get(..6) {
         Some(p) if p.eq_ignore_ascii_case("arxiv:") => s.get(6..).unwrap_or(s),
@@ -201,7 +227,7 @@ pub fn normalize_eprint(s: &str) -> String {
 }
 
 /// Lowercase a DOI and strip a resolver URL or `doi:` prefix.
-pub fn normalize_doi(s: &str) -> String {
+pub(crate) fn normalize_doi(s: &str) -> String {
     let s = s.trim();
     for prefix in [
         "https://doi.org/",
@@ -340,6 +366,49 @@ mod tests {
             assert!(
                 matches!(Identifier::from_url(url), Err(Error::InvalidIdentifierUrl)),
                 "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn from_arg_resolves_urls_with_or_without_prefix() {
+        for arg in [
+            "https://arxiv.org/abs/2005.12345v2",
+            "url:https://arxiv.org/abs/2005.12345",
+            "HTTP://arxiv.org/pdf/2005.12345.pdf",
+        ] {
+            assert_eq!(
+                Identifier::from_arg(arg).unwrap(),
+                Identifier::parse("eprint:2005.12345"),
+                "{arg}"
+            );
+        }
+        assert_eq!(
+            Identifier::from_arg("https://inspirehep.net/literature/451647").unwrap(),
+            Identifier::parse("inspire:451647")
+        );
+        assert!(matches!(
+            Identifier::from_arg("https://example.com/x"),
+            Err(Error::InvalidIdentifierUrl)
+        ));
+        assert_eq!(
+            Identifier::from_arg("2005.12345").unwrap(),
+            Identifier::parse("2005.12345")
+        );
+    }
+
+    #[test]
+    fn from_fetch_arg_treats_bare_arxiv_ids_as_eprints() {
+        for (arg, expected) in [
+            ("2005.12345v2", "eprint:2005.12345"),
+            ("hep-th/9711200", "eprint:hep-th/9711200"),
+            ("Maldacena:1997re", "Maldacena:1997re"),
+            ("inspire:451647", "inspire:451647"),
+        ] {
+            assert_eq!(
+                Identifier::from_fetch_arg(arg).unwrap(),
+                Identifier::parse(expected),
+                "{arg}"
             );
         }
     }

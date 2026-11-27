@@ -27,14 +27,16 @@ pub enum Command {
     /// Fetch an entry from a provider and append it to the bib file.
     ///
     /// The identifier is `<kind>:<value>` with kind `eprint` (also `arxiv`), `doi` or
-    /// `inspire` (a record id or a texkey). Use `url:` for arXiv abstract or PDF links
-    /// and INSPIRE literature links. Examples are `url:https://arxiv.org/abs/2005.12345`
-    /// and `url:https://inspirehep.net/literature/451647`.
+    /// `inspire` (a record id or a texkey). A bare arXiv id is an eprint, and arXiv abstract
+    /// or PDF links and INSPIRE literature links are recognized, with or without `url:`.
+    /// Examples are `2005.12345`, `https://arxiv.org/abs/2005.12345` and
+    /// `https://inspirehep.net/literature/451647`.
     ///
     /// The entry is appended as received, with an optional citation key override via
-    /// `--key`. If the key already exists in the file, or an entry there has the same eprint or
-    /// DOI, nothing is written and the command exits with code 3; `--allow-duplicate` adds
-    /// a repeated paper anyway.
+    /// `--key`. A missing file named by `-f` or `BIBX_FILE` is created. If the key already
+    /// exists in the file (ignoring case), or an entry there has the same eprint or DOI,
+    /// nothing is written and the command exits with code 3; `--allow-duplicate` adds a
+    /// repeated paper anyway.
     Add(AddArgs),
     /// Delete one entry from the bib file.
     Remove(RemoveArgs),
@@ -44,9 +46,9 @@ pub enum Command {
     Show(ShowArgs),
     /// Check the bib file for syntax errors and duplicate citation keys, eprints and DOIs.
     ///
-    /// Reports all findings on stderr without editing the file. Exits with code 0 for a
-    /// clean file, 3 for duplicates alone, 1 for syntax or file errors, and 2 for
-    /// invalid usage.
+    /// Keys that differ only in case count as duplicates. Reports all findings on stderr
+    /// without editing the file. Exits with code 0 for a clean file, 3 for duplicates alone,
+    /// 1 for syntax or file errors, and 2 for invalid usage.
     Check(FileArgs),
     /// Write a submitted arXiv bibliography to stdout.
     Pull(PullArgs),

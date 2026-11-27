@@ -233,3 +233,25 @@ $ bibx remove B -f broken.bib --dry-run
 warning: skipped 1 malformed entry in broken.bib; run `bibx check` for details
 would remove B
 ```
+
+## URLs
+
+```console
+$ bibx remove --dry-run https://arxiv.org/abs/2002.00002v1
+```
+
+`stdout`:
+
+```text
+@article{Second:2002b,
+  title = {Second},
+  eprint = "2002.00002",
+  doi = {https://doi.org/10.1000/Second}
+}
+```
+
+`stderr`:
+
+```text
+would remove Second:2002b from refs.bib
+```

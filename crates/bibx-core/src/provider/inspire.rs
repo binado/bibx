@@ -5,7 +5,6 @@ use crate::identifier::{Identifier, Kind, normalize_eprint};
 use crate::provider::{Fetched, Provider, single_entry};
 
 const DEFAULT_URL: &str = "https://inspirehep.net";
-const URL_ENV: &str = "BIBX_INSPIRE_URL";
 
 pub struct Inspire {
     base_url: String,
@@ -13,16 +12,25 @@ pub struct Inspire {
 }
 
 impl Inspire {
-    /// Talks to inspirehep.net, or to `$BIBX_INSPIRE_URL` when set (for tests).
+    /// Talks to inspirehep.net. With the `testing` feature, `$BIBX_INSPIRE_TEST_URL` overrides it.
     pub fn new() -> Self {
-        let url = std::env::var(URL_ENV)
+        #[cfg(feature = "testing")]
+        if let Some(url) = std::env::var("BIBX_INSPIRE_TEST_URL")
             .ok()
             .filter(|u| !u.is_empty())
-            .unwrap_or_else(|| DEFAULT_URL.to_string());
-        Self::with_base_url(url)
+        {
+            return Self::build(url);
+        }
+        Self::build(DEFAULT_URL)
     }
 
+    /// Talks to `base_url` instead of inspirehep.net; for tests.
+    #[cfg(feature = "testing")]
     pub fn with_base_url(base_url: impl Into<String>) -> Self {
+        Self::build(base_url)
+    }
+
+    fn build(base_url: impl Into<String>) -> Self {
         let agent = ureq::Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(30)))
             .user_agent(concat!("bibx/", env!("CARGO_PKG_VERSION")))

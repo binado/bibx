@@ -9,12 +9,13 @@ use super::{FileArgs, load, named};
 ///
 /// A bare value is a citation key. Use `eprint:` or `arxiv:` to match the `eprint` field,
 /// `doi:` to match the `doi` field, or `key:` to match the key, including keys that start
-/// with a known prefix. Only the entry's own lines are deleted. The removed
+/// with a known prefix. An arXiv or INSPIRE URL (optionally after `url:`) matches by its
+/// eprint or INSPIRE id. Only the entry's own lines are deleted. The removed
 /// entry is always printed to stdout. If several entries match, nothing is removed and the
 /// matches are listed (exit code 4).
 #[derive(Debug, Args)]
 pub struct RemoveArgs {
-    /// Which entry, e.g. `Author:2020abc`, `eprint:2005.12345` or `doi:10.1103/...`.
+    /// Which entry, e.g. `Author:2020abc`, `eprint:2005.12345`, `doi:10.1103/...` or an arXiv URL.
     id: String,
 
     /// Print the entry that would be removed and write nothing.
@@ -26,7 +27,7 @@ pub struct RemoveArgs {
 }
 
 pub fn run(args: RemoveArgs) -> anyhow::Result<()> {
-    let id = Identifier::parse(&args.id);
+    let id = Identifier::from_arg(&args.id)?;
     let target = args.file.target()?;
     let file = load(&target)?;
     let plan = remove(&file, &id)?;

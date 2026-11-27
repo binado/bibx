@@ -86,7 +86,7 @@ For more information, try '--help'.
 ## Ads ids are not fetchable from INSPIRE
 
 ```console
-$ BIBX_INSPIRE_URL=http://127.0.0.1:9 bibx add ads:2020ApJ...900..123A
+$ BIBX_INSPIRE_TEST_URL=http://127.0.0.1:9 bibx add ads:2020ApJ...900..123A
 ? 1
 ```
 
@@ -94,4 +94,17 @@ $ BIBX_INSPIRE_URL=http://127.0.0.1:9 bibx add ads:2020ApJ...900..123A
 
 ```text
 error: INSPIRE cannot look up `ads` identifiers; use eprint:, doi: or inspire:
+```
+
+## Unsupported URLs are rejected without the prefix too
+
+```console
+$ bibx add -f missing.bib https://example.com/abs/2005.12345
+? 1
+```
+
+`stderr`:
+
+```text
+error: expected an arXiv or INSPIRE URL: https://arxiv.org/abs/<id>, https://arxiv.org/pdf/<id> or https://inspirehep.net/literature/<record-id>
 ```

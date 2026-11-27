@@ -1,10 +1,10 @@
 use bibx_core::ops::add::add;
 use bibx_core::provider::{Source, provider_for};
-use bibx_core::write::atomic_write_if_unchanged;
-use bibx_core::{Error, Identifier, Kind};
+use bibx_core::write::{atomic_write_if_unchanged, create_new};
+use bibx_core::{BibFile, Error, Identifier, Kind};
 use clap::{Args, ValueEnum};
 
-use super::{FileArgs, load};
+use super::{FileArgs, load, load_if_exists};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum SourceArg {
@@ -22,7 +22,7 @@ impl From<SourceArg> for Source {
 /// Fetch an entry from a provider, append it to the bib file, and print it to stdout.
 #[derive(Debug, Args)]
 pub struct AddArgs {
-    /// What to fetch, e.g. `eprint:2005.12345`.
+    /// What to fetch, e.g. `eprint:2005.12345`, `2005.12345` or an arXiv or INSPIRE URL.
     id: String,
 
     /// Where to fetch it from.
@@ -46,21 +46,28 @@ pub struct AddArgs {
 }
 
 pub fn run(args: AddArgs) -> anyhow::Result<()> {
-    let id = match args.id.strip_prefix("url:") {
-        Some(url) => Identifier::from_url(url)?,
-        None => Identifier::parse(&args.id),
-    };
+    let id = Identifier::from_fetch_arg(&args.id)?;
     if id.kind() == Kind::Key {
         return Err(Error::UnfetchableKey(id.value().to_string()).into());
     }
     let target = args.file.target()?;
     let fetched = provider_for(args.source.into()).fetch(&id)?;
-    let file = load(&target)?;
+    let loaded = if target.auto_discovered {
+        Some(load(&target)?)
+    } else {
+        load_if_exists(&target)?
+    };
+    let (file, exists) = match loaded {
+        Some(file) => (file, true),
+        None => (BibFile::from_source(&target.path, String::new()), false),
+    };
     let plan = add(&file, &fetched, args.key.as_deref(), args.allow_duplicate)?;
     if args.dry_run {
         eprintln!("[dry run] Skipping write to {}", file.path.display());
-    } else {
+    } else if exists {
         atomic_write_if_unchanged(&file.path, &file.src, plan.new_src.as_bytes())?;
+    } else {
+        create_new(&file.path, plan.new_src.as_bytes())?;
     }
     print!("{}", plan.entry);
     Ok(())

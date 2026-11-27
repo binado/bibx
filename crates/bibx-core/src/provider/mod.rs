@@ -39,7 +39,7 @@ impl Fetched {
     }
 
     /// The eprint and DOI the entry carries, as identifiers.
-    pub fn identifiers(&self) -> Vec<Identifier> {
+    pub(crate) fn identifiers(&self) -> Vec<Identifier> {
         let bib = bibx_parser::parse(&self.entry);
         let Some(entry) = bib.entries().next() else {
             return Vec::new();

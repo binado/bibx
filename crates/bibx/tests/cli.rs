@@ -256,7 +256,7 @@ fn bibx(server: &MockServer, dir: &std::path::Path) -> Command {
     let mut cmd = Command::cargo_bin("bibx").unwrap();
     cmd.current_dir(dir)
         .env_clear()
-        .env("BIBX_INSPIRE_URL", &server.url);
+        .env("BIBX_INSPIRE_TEST_URL", &server.url);
     cmd
 }
 
@@ -301,6 +301,58 @@ fn add_with_an_explicit_file_appends_and_prints_the_overridden_key() {
 }
 
 #[test]
+fn add_creates_a_missing_explicit_file() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    let entry = format!("{}\n", RECORD.trim_end());
+    bibx(&server, dir.path())
+        .args(["add", "-f", "new.bib", "eprint:hep-th/9711200"])
+        .assert()
+        .success()
+        .stdout(entry.clone());
+    assert_eq!(
+        fs::read_to_string(dir.path().join("new.bib")).unwrap(),
+        entry
+    );
+}
+
+#[test]
+fn add_creates_the_file_named_by_bibx_file() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    bibx(&server, dir.path())
+        .env("BIBX_FILE", "new.bib")
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .success();
+    assert!(dir.path().join("new.bib").exists());
+}
+
+#[test]
+fn failed_fetch_and_dry_run_create_nothing() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    bibx(&server, dir.path())
+        .args(["add", "-f", "new.bib", "eprint:9999.99999"])
+        .assert()
+        .code(1);
+    bibx(&server, dir.path())
+        .args(["add", "-f", "new.bib", "eprint:hep-th/9711200", "--dry-run"])
+        .assert()
+        .success()
+        .stderr("[dry run] Skipping write to new.bib\n");
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn add_without_a_file_in_an_empty_directory_still_errors() {
+    let (server, dir) = (server(), tempfile::tempdir().unwrap());
+    bibx(&server, dir.path())
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .code(1)
+        .stderr("error: no .bib file found, pass -f\n");
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+}
+
+#[test]
 fn dry_run_prints_the_entry_and_writes_nothing() {
     let (server, dir) = (server(), tempfile::tempdir().unwrap());
     let path = dir.path().join("refs.bib");
@@ -315,18 +367,25 @@ fn dry_run_prints_the_entry_and_writes_nothing() {
 }
 
 #[test]
-fn add_from_arxiv_pdf_url() {
-    let (server, dir) = (server(), tempfile::tempdir().unwrap());
-    let path = dir.path().join("refs.bib");
-    fs::write(&path, "").unwrap();
-    bibx(&server, dir.path())
-        .args(["add", "url:https://arxiv.org/pdf/hep-th/9711200v2.pdf"])
-        .assert()
-        .success();
-    assert_eq!(
-        fs::read_to_string(&path).unwrap(),
-        format!("{}\n", RECORD.trim_end())
-    );
+fn add_from_an_arxiv_url_or_a_bare_arxiv_id() {
+    for id in [
+        "url:https://arxiv.org/pdf/hep-th/9711200v2.pdf",
+        "https://arxiv.org/abs/hep-th/9711200",
+        "hep-th/9711200v2",
+    ] {
+        let (server, dir) = (server(), tempfile::tempdir().unwrap());
+        let path = dir.path().join("refs.bib");
+        fs::write(&path, "").unwrap();
+        bibx(&server, dir.path())
+            .args(["add", id])
+            .assert()
+            .success();
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            format!("{}\n", RECORD.trim_end()),
+            "{id}"
+        );
+    }
 }
 
 #[test]
@@ -341,7 +400,7 @@ fn dry_run_from_inspire_literature_url() {
     bibx(&server, dir.path())
         .args([
             "add",
-            "url:https://inspirehep.net/literature/451647",
+            "https://inspirehep.net/literature/451647",
             "--dry-run",
         ])
         .assert()
@@ -474,7 +533,7 @@ fn add_keeps_an_entry_saved_while_the_fetch_was_pending() {
         .unwrap()
         .current_dir(dir.path())
         .env_clear()
-        .env("BIBX_INSPIRE_URL", url)
+        .env("BIBX_INSPIRE_TEST_URL", url)
         .args(["add", "eprint:hep-th/9711200"])
         .assert()
         .success()
@@ -484,6 +543,45 @@ fn add_keeps_an_entry_saved_while_the_fetch_was_pending() {
         fs::read_to_string(&path).unwrap(),
         format!("{edited}\n{entry}")
     );
+}
+
+#[test]
+fn add_does_not_recreate_a_discovered_file_deleted_during_the_fetch() {
+    use std::io::Read;
+    use std::net::TcpListener;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("refs.bib");
+    fs::write(&path, "@book{a, title = {A}}\n").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let server = {
+        let path = path.clone();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = stream.read(&mut buf);
+            fs::remove_file(&path).unwrap();
+            let body = RECORD.as_bytes();
+            let head = format!(
+                "HTTP/1.1 200 OK\r\ncontent-type: application/x-bibtex\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(head.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+        })
+    };
+    Command::cargo_bin("bibx")
+        .unwrap()
+        .current_dir(dir.path())
+        .env_clear()
+        .env("BIBX_INSPIRE_TEST_URL", url)
+        .args(["add", "eprint:hep-th/9711200"])
+        .assert()
+        .failure()
+        .stdout("");
+    server.join().unwrap();
+    assert!(!path.exists());
 }
 
 #[test]
