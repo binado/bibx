@@ -1,6 +1,6 @@
 use bibx_core::ops::add::add;
 use bibx_core::provider::{Source, provider_for};
-use bibx_core::write::atomic_write;
+use bibx_core::write::atomic_write_if_unchanged;
 use bibx_core::{Error, Identifier, Kind};
 use clap::{Args, ValueEnum};
 
@@ -50,13 +50,13 @@ pub fn run(args: AddArgs) -> anyhow::Result<()> {
         return Err(Error::UnfetchableKey(id.value().to_string()).into());
     }
     let target = args.file.target()?;
-    let file = load(&target)?;
     let fetched = provider_for(args.source.into()).fetch(&id)?;
+    let file = load(&target)?;
     let plan = add(&file, &fetched, args.key.as_deref())?;
     if args.dry_run {
         eprintln!("[dry run] Skipping write to {}", file.path.display());
     } else {
-        atomic_write(&file.path, plan.new_src.as_bytes())?;
+        atomic_write_if_unchanged(&file.path, &file.src, plan.new_src.as_bytes())?;
     }
     print!("{}", plan.entry);
     Ok(())

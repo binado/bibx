@@ -28,9 +28,40 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
+/// Like [`atomic_write`], but refuse with [`Error::ConcurrentEdit`] unless the file on disk
+/// still holds exactly `expected`, the text the new bytes were planned from.
+pub fn atomic_write_if_unchanged(path: &Path, expected: &str, bytes: &[u8]) -> Result<()> {
+    let current = std::fs::read(path).map_err(|e| Error::io(path, e))?;
+    if current != expected.as_bytes() {
+        return Err(Error::ConcurrentEdit(path.to_path_buf()));
+    }
+    atomic_write(path, bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn guarded_write_refuses_a_file_that_changed_since_it_was_read() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("a.bib");
+        std::fs::write(&p, "old\nconcurrent\n").unwrap();
+
+        let err = atomic_write_if_unchanged(&p, "old\n", b"old\nnew\n").unwrap_err();
+        assert!(matches!(err, Error::ConcurrentEdit(path) if path == p));
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "old\nconcurrent\n");
+        assert_eq!(std::fs::read_dir(d.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn guarded_write_replaces_an_unchanged_file() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("a.bib");
+        std::fs::write(&p, "old\n").unwrap();
+        atomic_write_if_unchanged(&p, "old\n", b"old\nnew\n").unwrap();
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "old\nnew\n");
+    }
 
     #[cfg(unix)]
     #[test]
