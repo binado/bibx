@@ -4,6 +4,6 @@ The library behind the [`bibx`](https://crates.io/crates/bibx) CLI: bibliography
 
 Providers sit behind the `inspire` and `arxiv` cargo features, both on by default.
 
-This crate follows the CLI's release cadence and its API may change between minor versions. See the [repository](https://github.com/binado/bibx) for details.
+The API is not stable: it exists to serve the CLI and may change in any release, so depend on it only with an exact version (`=x.y.z`). The `testing` feature (a mock HTTP server and `BIBX_*_TEST_URL` overrides) is for bibx's own tests and has no compatibility guarantee.
 
 MSRV is Rust 1.88. Licensed under MIT.

@@ -256,7 +256,7 @@ fn bibx(server: &MockServer, dir: &std::path::Path) -> Command {
     let mut cmd = Command::cargo_bin("bibx").unwrap();
     cmd.current_dir(dir)
         .env_clear()
-        .env("BIBX_INSPIRE_URL", &server.url);
+        .env("BIBX_INSPIRE_TEST_URL", &server.url);
     cmd
 }
 
@@ -474,7 +474,7 @@ fn add_keeps_an_entry_saved_while_the_fetch_was_pending() {
         .unwrap()
         .current_dir(dir.path())
         .env_clear()
-        .env("BIBX_INSPIRE_URL", url)
+        .env("BIBX_INSPIRE_TEST_URL", url)
         .args(["add", "eprint:hep-th/9711200"])
         .assert()
         .success()

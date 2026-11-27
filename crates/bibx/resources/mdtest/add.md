@@ -86,7 +86,7 @@ For more information, try '--help'.
 ## Ads ids are not fetchable from INSPIRE
 
 ```console
-$ BIBX_INSPIRE_URL=http://127.0.0.1:9 bibx add ads:2020ApJ...900..123A
+$ BIBX_INSPIRE_TEST_URL=http://127.0.0.1:9 bibx add ads:2020ApJ...900..123A
 ? 1
 ```
 
