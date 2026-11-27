@@ -19,8 +19,9 @@ bibx list --sort year                   # table; --format json for scripts
 bibx show Maldacena:1997re              # original entry text, through its closing delimiter
 bibx remove Maldacena:1997re            # also eprint:<id> and doi:<doi>
 bibx check -f refs.bib                  # report syntax errors and duplicate keys, eprints and DOIs
-bibx pull arxiv:2501.01234v2 > references.bib
-bibx pull arxiv:2501.01234v2 --path tex/refs.bib > references.bib
+bibx pull arxiv:2501.01234v2 -o references.bib   # refuses to overwrite an existing file; --force replaces it
+bibx pull arxiv:2501.01234v2 --path tex/refs.bib -o references.bib
+bibx pull arxiv:2501.01234v2 | less      # stdout; do not redirect over a file you want to keep
 ```
 
 For commands that work with a local bibliography, set the bib file with `-f/--file`, as in `bibx list -f refs.bib`. Without the flag, bibx uses `BIBX_FILE` if set. Leave it unset to discover the only `*.bib` in the current directory. Run `bibx <command> --help` for options and exit codes. `list`, `show`, `add` and `remove` ignore malformed entries and warn on stderr with the count; `bibx check` shows where.
@@ -32,7 +33,7 @@ For commands that work with a local bibliography, set the bib file with `-f/--fi
 - Edits are byte-range splices: the rest of the file stays byte for byte, and line endings (LF or CRLF) are kept
 - Identifiers of the form `<kind>:<value>` (key, eprint, doi, inspire), with `arxiv:` as an alias for `eprint:`
 - `add` accepts `url:` followed by an arXiv abstract or PDF URL or an INSPIRE literature record URL
-- `pull` writes the original bibliography bytes to stdout and caches explicitly versioned source bundles in the platform user cache
+- `pull` writes the original bibliography bytes to stdout, or atomically to `-o <PATH>` after a successful pull, and caches explicitly versioned source bundles in the platform user cache
 - `add` refuses a duplicate key, or a paper whose eprint or DOI is already in the file (`--allow-duplicate` overrides the latter); an ambiguous match is refused too, each with its own exit code
 - `add` fetches before reading the file and refuses to write if the file changed meanwhile
 - Lossless parser with spans and per-entry error recovery (`bibx-parser`)

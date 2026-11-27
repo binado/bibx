@@ -514,3 +514,62 @@ fn same_paper_under_another_key_exits_3_unless_allowed() {
             .contains("@article{other,")
     );
 }
+
+#[test]
+fn pull_output_writes_the_file_after_success() {
+    let bytes = b"% comment\r\n@misc{unchanged, note = {\xff}}";
+    let bundle = source(&[("refs.bib", bytes)]);
+    let server = MockServer::start(vec![(ARXIV_ROUTE.into(), source_reply(bundle))]);
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("out.bib");
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "-o"])
+        .arg(&out)
+        .assert()
+        .success()
+        .stdout("");
+    assert_eq!(fs::read(&out).unwrap(), bytes);
+}
+
+#[test]
+fn pull_output_leaves_an_existing_file_untouched_on_failure() {
+    let server = MockServer::start(vec![]);
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("out.bib");
+    fs::write(&out, b"precious").unwrap();
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "--force", "-o"])
+        .arg(&out)
+        .assert()
+        .code(1)
+        .stdout("");
+    assert_eq!(fs::read(&out).unwrap(), b"precious");
+}
+
+#[test]
+fn pull_output_refuses_to_overwrite_without_force() {
+    let bundle = source(&[("refs.bib", b"@misc{new}")]);
+    let server = MockServer::start(vec![(ARXIV_ROUTE.into(), source_reply(bundle))]);
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("out.bib");
+    fs::write(&out, b"precious").unwrap();
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "-o"])
+        .arg(&out)
+        .assert()
+        .code(1)
+        .stdout("")
+        .stderr(predicates::str::contains("already exists"));
+    assert_eq!(fs::read(&out).unwrap(), b"precious");
+    assert!(server.requests().is_empty());
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "--force", "-o"])
+        .arg(&out)
+        .assert()
+        .success();
+    assert_eq!(fs::read(&out).unwrap(), b"@misc{new}");
+    pull(&server, dir.path())
+        .args([ARXIV_ID, "--force"])
+        .assert()
+        .code(2);
+}
