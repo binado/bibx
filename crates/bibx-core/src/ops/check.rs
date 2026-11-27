@@ -26,7 +26,7 @@ pub enum DiagnosticKind<'s> {
         key: &'s str,
         first: Location,
     },
-    /// An entry's key differs from an earlier key only in case, which BibTeX treats as a clash.
+    /// An entry's key differs from an earlier key only in case: BibTeX rejects it, Biber warns.
     KeyCaseConflict {
         key: &'s str,
         first_key: &'s str,

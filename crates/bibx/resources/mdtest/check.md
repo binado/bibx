@@ -85,6 +85,26 @@ $ bibx check -f case.bib
 case.bib:3:7: error: citation key `kEY` differs only in case from `Key` (first occurrence at case.bib:1:7)
 ```
 
+## Case folding covers non-ASCII keys
+
+`unicode.bib`:
+
+```bibtex
+@book{Émile}
+@book{émile}
+```
+
+```console
+$ bibx check -f unicode.bib
+? 3
+```
+
+`stderr`:
+
+```text
+unicode.bib:2:7: error: citation key `émile` differs only in case from `Émile` (first occurrence at unicode.bib:1:7)
+```
+
 ## Syntax errors and duplicate keys appear together in source order
 
 `mixed.bib`:
