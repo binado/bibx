@@ -28,6 +28,19 @@ pub(crate) fn run(args: FileArgs) -> anyhow::Result<ExitCode> {
                     first.line, first.column
                 )
             }
+            DiagnosticKind::KeyCaseConflict {
+                key,
+                first_key,
+                first,
+            } => {
+                if code == 0 {
+                    code = 3;
+                }
+                format!(
+                    "citation key `{key}` differs only in case from `{first_key}` (first occurrence at {path}:{}:{})",
+                    first.line, first.column
+                )
+            }
             DiagnosticKind::DuplicateKey { key, first } => {
                 if code == 0 {
                     code = 3;

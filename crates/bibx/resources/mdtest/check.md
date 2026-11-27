@@ -9,7 +9,7 @@
 @preamble{"a"}
 @comment{a}
 @book{a, journal = a}
-@book{A}
+@book{b}
 ```
 
 ```console
@@ -62,6 +62,27 @@ $ BIBX_FILE=ignored.bib bibx check -f refs.bib
 ```text
 refs.bib:3:12: error: duplicate citation key `repeated` (first occurrence at refs.bib:1:7)
 refs.bib:4:4: error: duplicate citation key `repeated` (first occurrence at refs.bib:1:7)
+```
+
+## Keys that differ only in case are reported
+
+`case.bib`:
+
+```bibtex
+@book{Key}
+@book{other}
+@book{kEY}
+```
+
+```console
+$ bibx check -f case.bib
+? 3
+```
+
+`stderr`:
+
+```text
+case.bib:3:7: error: citation key `kEY` differs only in case from `Key` (first occurrence at case.bib:1:7)
 ```
 
 ## Syntax errors and duplicate keys appear together in source order
