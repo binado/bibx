@@ -2,10 +2,10 @@ use std::process::ExitCode;
 
 use bibx_core::ops::check::{DiagnosticKind, check};
 
-use super::{FileArgs, load};
+use super::{FileArgs, load_quiet};
 
 pub(crate) fn run(args: FileArgs) -> anyhow::Result<ExitCode> {
-    let file = load(&args.target()?)?;
+    let file = load_quiet(&args.target()?)?;
     let path = file.path.display();
     let mut code = 0;
     for diagnostic in check(&file) {

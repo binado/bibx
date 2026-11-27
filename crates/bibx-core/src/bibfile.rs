@@ -56,6 +56,11 @@ impl BibFile {
         bibx_parser::parse(&self.src)
     }
 
+    /// How many malformed entries the parser recovered from; they are absent from [`Bib::entries`].
+    pub fn skipped(&self) -> usize {
+        self.parse().errors().count()
+    }
+
     /// The entries `id` refers to. A key matches exactly; an eprint or DOI matches the
     /// normalized `eprint` or `doi` field; `inspire:` and `ads:` match the key (both services
     /// use their own id as the key).

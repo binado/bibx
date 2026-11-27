@@ -206,3 +206,30 @@ $ bibx remove -f dup.bib eprint:1234.5678
 ```text
 error: `eprint:1234.5678` matches several entries: One, Two
 ```
+
+## Malformed entries are skipped with a warning on stderr
+
+`broken.bib`:
+
+```bibtex
+@article{A, title={Unclosed,
+}
+@book{B, title={ok}}
+```
+
+```console
+$ bibx remove B -f broken.bib --dry-run
+```
+
+`stdout`:
+
+```text
+@book{B, title={ok}}
+```
+
+`stderr`:
+
+```text
+warning: skipped 1 malformed entry in broken.bib; run `bibx check` for details
+would remove B
+```
