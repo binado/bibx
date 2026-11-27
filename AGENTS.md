@@ -5,7 +5,6 @@ Repo-wide guidance for AI agents. Crate-specific rules live in `crates/<crate>/A
 - Commits must follow Conventional Commits.
 - Keep `README.md` examples and tables in sync with CLI changes. Keep the README and comments concise: detail belongs in `--help`, rustdoc and tests.
 - Don't use code comments to enforce invariance or patterns. Those should be manifested in the code design.
-- `IDEA.md` is the design document; update it when a decision changes.
 - Never re-serialize the user's `.bib` file (only a future `fmt` may): edits are byte-range splices.
 
 ## Commands

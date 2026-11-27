@@ -40,7 +40,7 @@ For commands that work with a local bibliography, set the bib file with `-f/--fi
 
 - To edit a bibliography reached through a symbolic link, select the target file directly
 - `add` fetches individual entries from INSPIRE
-- ADS, `fmt` and v2 commands are in the roadmap in `IDEA.md`
+- ADS and `fmt` are not implemented yet; see the [GitHub issues](https://github.com/binado/bibx/issues)
 - `list` decodes LaTeX where it can, for the table and for `--sort`; JSON values stay raw (see `bibx list --help`)
 
 ## Development

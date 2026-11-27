@@ -4,7 +4,6 @@
 !CHANGELOG.md
 !AGENTS.md
 !CLAUDE.md
-!/IDEA.md
 !/crates/bibx/resources/mdtest/*.md
 !/crates/bibx-parser/tests/fixtures/**/*.md
 .DS_Store
