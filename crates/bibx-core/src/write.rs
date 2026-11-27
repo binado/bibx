@@ -6,13 +6,8 @@ use crate::error::{Error, Result};
 /// Write `bytes` to a temp file next to `path`, copy the original permissions and rename it
 /// over `path`, so a crash never leaves a half-written file. Reject symbolic links.
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
-    let dir = match path.parent() {
-        Some(p) if !p.as_os_str().is_empty() => p,
-        _ => Path::new("."),
-    };
     let io = |e| Error::io(path, e);
-    let mut tmp = tempfile::NamedTempFile::new_in(dir).map_err(io)?;
-    tmp.write_all(bytes).map_err(io)?;
+    let tmp = stage_write(path, bytes)?;
     match std::fs::symlink_metadata(path) {
         Ok(meta) if meta.is_symlink() => {
             return Err(io(io::Error::new(
@@ -26,6 +21,24 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     }
     tmp.persist(path).map_err(|e| Error::io(path, e.error))?;
     Ok(())
+}
+
+/// Publish a complete new file at `path`, refusing to replace an existing path.
+pub fn atomic_create(path: &Path, bytes: &[u8]) -> Result<()> {
+    stage_write(path, bytes)?
+        .persist_noclobber(path)
+        .map_err(|e| Error::io(path, e.error))?;
+    Ok(())
+}
+
+fn stage_write(path: &Path, bytes: &[u8]) -> Result<tempfile::NamedTempFile> {
+    let dir = match path.parent() {
+        Some(p) if !p.as_os_str().is_empty() => p,
+        _ => Path::new("."),
+    };
+    let mut tmp = tempfile::NamedTempFile::new_in(dir).map_err(|e| Error::io(path, e))?;
+    tmp.write_all(bytes).map_err(|e| Error::io(path, e))?;
+    Ok(tmp)
 }
 
 /// Like [`atomic_write`], but refuse with [`Error::ConcurrentEdit`] unless the file on disk

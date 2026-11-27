@@ -671,3 +671,49 @@ fn pull_output_refuses_to_overwrite_without_force() {
         .assert()
         .code(2);
 }
+
+#[test]
+fn pull_output_preserves_a_file_created_during_the_download() {
+    use std::io::{BufRead, BufReader};
+    use std::net::TcpListener;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("out.bib");
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let server = {
+        let out = out.clone();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            for line in BufReader::new(&stream).lines() {
+                if line.unwrap().is_empty() {
+                    break;
+                }
+            }
+            fs::write(out, b"created during download").unwrap();
+            let body = source(&[("refs.bib", b"@misc{downloaded}")]);
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: application/gzip\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len(),
+            )
+            .unwrap();
+            stream.write_all(&body).unwrap();
+        })
+    };
+    let result = Command::cargo_bin("bibx")
+        .unwrap()
+        .current_dir(dir.path())
+        .env_clear()
+        .env("BIBX_ARXIV_TEST_URL", url)
+        .env("BIBX_ARXIV_TEST_CACHE", dir.path().join("cache"))
+        .args(["pull", ARXIV_ID, "-o"])
+        .arg(&out)
+        .assert();
+    server.join().unwrap();
+    result
+        .code(1)
+        .stdout("")
+        .stderr(predicates::str::contains("--force"));
+    assert_eq!(fs::read(&out).unwrap(), b"created during download");
+}

@@ -1,8 +1,9 @@
-use std::path::PathBuf;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
-use anyhow::bail;
+use bibx_core::Error;
 use bibx_core::arxiv::{Arxiv, ArxivId};
-use bibx_core::write::atomic_write;
+use bibx_core::write::{atomic_create, atomic_write};
 use clap::Args;
 
 use super::write_stdout;
@@ -38,18 +39,31 @@ pub fn run(args: PullArgs) -> anyhow::Result<()> {
     if let Some(output) = args.output.as_deref().filter(|_| !args.force)
         && output.symlink_metadata().is_ok()
     {
-        bail!(
-            "{} already exists, pass --force to overwrite it",
-            output.display()
-        );
+        return Err(output_exists(output));
     }
     let bytes = Arxiv::new().pull(&args.id, args.path.as_deref())?;
     match args.output {
         Some(output) => {
-            atomic_write(&output, &bytes)?;
+            if args.force {
+                atomic_write(&output, &bytes)?;
+            } else {
+                atomic_create(&output, &bytes).map_err(|err| match err {
+                    Error::Io { source, .. } if source.kind() == ErrorKind::AlreadyExists => {
+                        output_exists(&output)
+                    }
+                    err => err.into(),
+                })?;
+            }
             eprintln!("wrote {}", output.display());
             Ok(())
         }
         None => write_stdout("pull", bytes),
     }
+}
+
+fn output_exists(path: &Path) -> anyhow::Error {
+    anyhow::anyhow!(
+        "{} already exists, pass --force to overwrite it",
+        path.display()
+    )
 }
