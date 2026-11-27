@@ -367,3 +367,37 @@ $ bibx list -f latex.bib --sort title --format json
   }
 ]
 ```
+
+## Malformed entries are skipped with a warning on stderr
+
+`broken.bib`:
+
+```bibtex
+@article{A, title={Unclosed,
+}
+@book{B, title={ok}}
+```
+
+```console
+$ bibx list -f broken.bib --format json
+```
+
+`stdout`:
+
+```text
+[
+  {
+    "key": "B",
+    "type": "book",
+    "fields": {
+      "title": "ok"
+    }
+  }
+]
+```
+
+`stderr`:
+
+```text
+warning: skipped 1 malformed entry in broken.bib; run `bibx check` for details
+```

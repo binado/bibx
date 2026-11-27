@@ -26,6 +26,8 @@ pub enum Format {
 /// unknown commands and `~` are kept. Macros, `#` joins, identifier, URL and citation-key
 /// fields, and values that cannot be decoded stay raw.
 ///
+/// Malformed entries are left out and counted in a warning on stderr; `bibx check` locates them.
+///
 /// A field named in `--fields` or `--sort` that no entry has is reported as a warning on
 /// stderr, and the exit code stays 0. The default fields and files without entries are not
 /// reported.

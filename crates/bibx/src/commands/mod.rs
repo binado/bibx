@@ -26,7 +26,21 @@ impl FileArgs {
     }
 }
 
+/// Load the file, warning on stderr when malformed entries are being ignored.
 pub fn load(target: &Target) -> anyhow::Result<BibFile> {
+    let file = load_quiet(target)?;
+    let skipped = file.skipped();
+    if skipped > 0 {
+        let plural = if skipped == 1 { "entry" } else { "entries" };
+        eprintln!(
+            "warning: skipped {skipped} malformed {plural} in {}; run `bibx check` for details",
+            file.path.display()
+        );
+    }
+    Ok(file)
+}
+
+pub fn load_quiet(target: &Target) -> anyhow::Result<BibFile> {
     Ok(BibFile::load(&target.path)?)
 }
 
